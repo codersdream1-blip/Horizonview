@@ -171,6 +171,11 @@ def project_detail(project_id: int, request: Request):
     expenses = [projects.display_expense(e) for e in raw_expenses]
     expense_summary = projects.expense_summary(project, raw_expenses)
 
+    messages = [
+        projects.display_message(m, owner_id=user["id"])
+        for m in db.get_messages_for_project(project_id)
+    ]
+
     return templates.TemplateResponse(
         request=request,
         name="project_detail.html",
@@ -180,6 +185,7 @@ def project_detail(project_id: int, request: Request):
             "photos": photos,
             "expenses": expenses,
             "expense_summary": expense_summary,
+            "messages": messages,
             "categories": projects.EXPENSE_CATEGORIES,
             "today": date.today().isoformat(),
             "stages": projects.STAGES,

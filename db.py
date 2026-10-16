@@ -78,6 +78,17 @@ CREATE TABLE IF NOT EXISTS project_expenses (
     spent_on TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+-- Private message thread between the project owner and the
+-- HorizonView team. Owner posts now; team replies arrive later.
+CREATE TABLE IF NOT EXISTS project_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    sender_id INTEGER NOT NULL REFERENCES users(id),
+    sender_role TEXT NOT NULL DEFAULT 'owner',
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -257,6 +268,33 @@ def get_expenses_for_project(project_id: int) -> list[dict]:
         rows = conn.execute(
             "SELECT * FROM project_expenses WHERE project_id = ? "
             "ORDER BY spent_on DESC, id DESC",
+            (project_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def create_message(
+    project_id: int,
+    sender_id: int,
+    sender_role: str,
+    body: str,
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO project_messages (project_id, sender_id, "
+            "sender_role, body, created_at) VALUES (?, ?, ?, ?, ?)",
+            (project_id, sender_id, sender_role, body, now),
+        )
+        return cursor.lastrowid
+
+
+def get_messages_for_project(project_id: int) -> list[dict]:
+    # Chat order: oldest first, so the thread reads like a conversation.
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM project_messages WHERE project_id = ? "
+            "ORDER BY created_at ASC, id ASC",
             (project_id,),
         ).fetchall()
         return [dict(row) for row in rows]

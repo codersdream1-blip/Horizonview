@@ -369,6 +369,45 @@
             white-space: nowrap;
         }
 
+        .msg-thread {
+            margin-top: 12px;
+        }
+
+        .msg-bubble {
+            max-width: 78%;
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+        }
+
+        .msg-owner {
+            background: #eef4ef;
+            border: 1px solid #cfe3d5;
+            margin-left: auto;
+            text-align: left;
+        }
+
+        .msg-team {
+            background: #f7f9f6;
+            border: 1px solid #e2e8e3;
+            margin-right: auto;
+        }
+
+        .msg-body {
+            color: #203629;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .msg-meta {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #7b867e;
+        }
+
         @media (max-width: 620px) {
             .add-update-box .grid-2 {
                 grid-template-columns: 1fr;
@@ -602,9 +641,9 @@
             </section>
 
             <div class="pending-note">
-                Recorded videos and payment records will appear on this
-                page as your HorizonView project team records them.
-                Nothing here is filled in with sample data.
+                Recorded videos and official payment records will appear on
+                this page once those phases are switched on. Everything else
+                on this page is real data you have recorded.
             </div>
 
             <h2 class="progress-heading">Progress notes</h2>
@@ -674,6 +713,42 @@
                     For now the owner records these notes. In later phases
                     your HorizonView project team records them, and they
                     appear here with timestamps.
+                </p>
+            </section>
+
+            <h2 class="progress-heading">Messages</h2>
+
+            {% if messages %}
+            <section class="msg-thread">
+                {% for m in messages %}
+                <div class="msg-bubble msg-owner">
+                    <p class="msg-body">{{ m.body }}</p>
+                    <div class="msg-meta">{{ m.sender_display }} · {{ m.time_display }}</div>
+                </div>
+                {% endfor %}
+            </section>
+            {% else %}
+            <p class="update-empty">
+                No messages yet. Send the first one below.
+            </p>
+            {% endif %}
+
+            <section class="add-update-box">
+                <h3>Send a message</h3>
+
+                <form id="messageForm">
+                    <label for="msgBody">Your message *</label>
+                    <textarea id="msgBody" rows="3" maxlength="2000"
+                              placeholder="Ask about your project, share instructions, or note a concern..."></textarea>
+
+                    <button type="submit" class="project-submit">Send Message</button>
+                    <p id="messageMsg" class="form-msg" role="status" aria-live="polite"></p>
+                </form>
+
+                <p class="note-explain">
+                    Messages stay private to your project. In this phase you
+                    can post; replies from your HorizonView project team
+                    appear here once the team inbox is switched on.
                 </p>
             </section>
         </section>
@@ -843,6 +918,51 @@
                     "Could not reach the HorizonView server. Make sure it is running.";
             } finally {
                 expenseButton.disabled = false;
+            }
+        });
+
+        const messageForm = document.getElementById("messageForm");
+        const messageMsg = document.getElementById("messageMsg");
+        const messageButton = messageForm.querySelector("button[type=submit]");
+
+        messageForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            messageButton.disabled = true;
+            messageMsg.textContent = "Sending...";
+
+            const projectId = window.location.pathname.split("/")[2];
+            const values = {
+                body: document.getElementById("msgBody").value.trim()
+            };
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/messages`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(values)
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                let data = null;
+                try { data = await response.json(); } catch (e) { data = null; }
+
+                if (response.ok) {
+                    window.location.reload();
+                    return;
+                }
+
+                messageMsg.textContent = (data && data.message) ||
+                    "Sending failed. Please try again.";
+            } catch (networkError) {
+                messageMsg.textContent =
+                    "Could not reach the HorizonView server. Make sure it is running.";
+            } finally {
+                messageButton.disabled = false;
             }
         });
     </script>

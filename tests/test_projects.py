@@ -555,3 +555,60 @@ def test_project_without_budget_still_sums_spending(client):
     page = client.get(f"/projects/{project_id}").text
     assert "no budget recorded yet" in page
     assert "GH₵350.00" in page
+def send_message(client, project_id, body="Hello, please share the schedule."):
+    return client.post(
+        f"/api/projects/{project_id}/messages", json={"body": body}
+    )
+
+
+def test_send_message_stores_and_lists_in_chat_order(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    assert send_message(client, project_id, "First message").status_code == 201
+    send_message(client, project_id, "Second message")
+
+    data = client.get(f"/api/projects/{project_id}/messages").json()
+    bodies = [m["body"] for m in data["messages"]]
+    # Chat order: oldest first, reading like a conversation.
+    assert bodies == ["First message", "Second message"]
+    assert data["messages"][0]["sender_display"] == "You"
+
+
+def test_message_page_renders_thread(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    send_message(client, project_id, "Please confirm the roofing team size.")
+
+    page = client.get(f"/projects/{project_id}").text
+    assert "Please confirm the roofing team size." in page
+    assert "Send a message" in page
+    assert 'id="messageForm"' in page
+    assert "msg-bubble" in page
+
+
+def test_message_validation(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    assert send_message(client, project_id, body="   ").status_code == 400
+    assert send_message(client, project_id, body="x" * 3000).status_code == 400
+    assert db.get_messages_for_project(project_id) == []
+
+
+def test_message_access_control(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    send_message(client, project_id)
+    client.post("/api/logout")
+
+    assert send_message(TestClient(main.app), project_id).status_code == 401
+    assert client.get(f"/api/projects/{project_id}/messages").status_code == 401
+
+    other = dict(REGISTER_PAYLOAD, email="stranger5@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+    assert client.get(f"/api/projects/{project_id}/messages").status_code == 404
+    assert send_message(client, project_id).status_code == 404

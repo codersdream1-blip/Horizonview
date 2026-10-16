@@ -449,6 +449,78 @@ async def add_expense(project_id: int, request: Request):
     )
 
 
+def display_message(message: dict, owner_id: int) -> dict:
+    message = dict(message)
+    message["time_display"] = message["created_at"][:16].replace("T", " ")
+    message["sender_display"] = (
+        "You" if message["sender_id"] == owner_id
+        else "HorizonView team"
+    )
+    return message
+
+
+@router.post("/projects/{project_id}/messages")
+async def post_message(project_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    try:
+        data = await request.json()
+    except Exception:
+        return bad_request("Send the request as JSON data.")
+
+    if not isinstance(data, dict):
+        return bad_request("Send the request as JSON data.")
+
+    body = str(data.get("body", "")).strip()
+    if not 1 <= len(body) <= 2000:
+        return bad_request(
+            "Write your message (1 to 2000 characters).",
+            {"body": "Write your message (1 to 2000 characters)."},
+        )
+
+    db.create_message(
+        project_id=project_id,
+        sender_id=user["id"],
+        sender_role="owner",
+        body=body,
+    )
+
+    return JSONResponse(
+        {"ok": True, "message": "Message sent."}, status_code=201
+    )
+
+
+@router.get("/projects/{project_id}/messages")
+async def get_messages(project_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    messages = [
+        display_message(m, owner_id=user["id"])
+        for m in db.get_messages_for_project(project_id)
+    ]
+    return {"ok": True, "messages": messages}
+
+
 @router.get("/projects/{project_id}/expenses")
 async def get_expenses(project_id: int, request: Request):
     user = get_current_user(request)
