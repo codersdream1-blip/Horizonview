@@ -455,6 +455,27 @@
             text-align: center;
         }
 
+        .feature-notice {
+            background: #fff7db;
+            border: 1px solid #ecd88c;
+            color: #674f08;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 25px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .feature-notice strong {
+            display: block;
+            color: #4f3d06;
+            margin-bottom: 6px;
+        }
+
+        .feature-notice[hidden] {
+            display: none;
+        }
+
         .mobile-menu {
             display: none;
         }
@@ -599,6 +620,11 @@
         </header>
 
         <div class="content" id="overview">
+
+            <div id="featureNotice" class="feature-notice" role="status" aria-live="polite" hidden>
+                <strong id="featureNoticeTitle"></strong>
+                <span id="featureNoticeText"></span>
+            </div>
 
             <section class="welcome">
                 <h1>Welcome to HorizonView</h1>
@@ -823,10 +849,9 @@
                         <li><strong>Platinum:</strong> Gold services plus live site tours</li>
                     </ul>
 
-                    <button class="feature-button"
-                        onclick="showNotice('Service Packages')">
+                    <a href="packages.html" class="feature-button">
                         Explore Packages
-                    </button>
+                    </a>
 
                 </article>
 
@@ -884,14 +909,36 @@
 </div>
 
 <script>
+
+    // Honest status notes for dashboard features.
+    // Every feature states what it will do and that it is not
+    // connected to live data yet.
+    const featureNotices = {
+        "Site Photos":
+            "Dated site photo galleries will appear here once your project team uploads them. Photo uploads are not connected to the backend yet.",
+        "Recorded Videos":
+            "Recorded walkthrough, update and inspection videos will play here. Video uploads are not connected to the backend yet.",
+        "Platinum Live Video":
+            "Live site tours need a real streaming provider and a Platinum package. Live video is planned for a later phase — nothing is being streamed right now.",
+        "Budget & Payments":
+            "Agreed budgets, recorded expenses and confirmed payments will be tracked here in Ghana cedis (GH₵). Budget records are not connected to the backend yet.",
+        "Messages":
+            "Messaging between you and your project team will open here. Messaging is not connected to the backend yet.",
+        "Project Documents":
+            "Contracts, drawings, receipts and inspection reports will be listed here. Document storage is not connected to the backend yet."
+    };
+
+    const noticePanel = document.getElementById("featureNotice");
+    const noticeTitle = document.getElementById("featureNoticeTitle");
+    const noticeText = document.getElementById("featureNoticeText");
+
     function showNotice(feature) {
-        alert(
-            feature +
-            " is part of the HorizonView dashboard design. " +
-            "We will connect this feature to the backend when " +
-            "we build the project management system."
-        );
+        noticeTitle.textContent = feature + " — not connected yet";
+        noticeText.textContent = featureNotices[feature] || "";
+        noticePanel.hidden = false;
+        noticePanel.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+
 </script>
 
 </body>
