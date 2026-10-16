@@ -108,3 +108,11 @@ def get_projects_for_user(owner_id: int) -> list[dict]:
             (owner_id,),
         ).fetchall()
         return [dict(row) for row in rows]
+
+
+def get_project_by_id(project_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM projects WHERE id = ?", (project_id,)
+        ).fetchone()
+        return dict(row) if row else None

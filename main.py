@@ -120,6 +120,8 @@ def dashboard(request: Request):
 
 # The project creation page. Like /dashboard, it is personalised and
 # must never be viewable without a logged-in session.
+# NOTE: this route is registered BEFORE "/projects/{project_id}",
+# otherwise FastAPI would try to read the word "new" as an integer.
 
 
 @app.get("/projects/new")
@@ -134,6 +136,30 @@ def new_project_page(request: Request):
         context={
             "full_name": user["full_name"],
         },
+    )
+
+
+@app.get("/projects/{project_id}")
+def project_detail(project_id: int, request: Request):
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse("/login.html", status_code=303)
+
+    project = db.get_project_by_id(project_id)
+
+    # 404 for missing pages AND other people's projects: the URL never
+    # confirms that someone else's project even exists.
+    if not project or project["owner_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    shown = projects.display_fields(project)
+    shown["created_display"] = shown["created_at"][:10]
+    shown["id"] = project_id
+
+    return templates.TemplateResponse(
+        request=request,
+        name="project_detail.html",
+        context={"project": shown},
     )
 
 

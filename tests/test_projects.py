@@ -132,3 +132,54 @@ def test_dashboard_shows_real_project(client):
     assert "GH₵450,000" in page
     assert "No projects yet" not in page
     assert "HV-DEMO-001" not in page  # the old sample data is gone
+
+
+def test_project_detail_page_owner_only(client):
+    make_logged_in(client)
+    response = create_project(client)
+    project_id = response.json()["project"]["id"]
+
+    page = client.get(f"/projects/{project_id}")
+    assert page.status_code == 200
+    assert "East Legon House Build" in page.text
+    assert "GH₵450,000" in page.text
+    assert "East Legon, Accra" in page.text
+
+
+def test_project_detail_other_users_get_404(client):
+    # User A creates a project; user B must get a plain 404.
+    client.post("/api/register", json=REGISTER_PAYLOAD)
+    client.post("/api/login",
+                json={"email": REGISTER_PAYLOAD["email"],
+                      "password": REGISTER_PAYLOAD["password"]})
+    project_id = create_project(client).json()["project"]["id"]
+    client.post("/api/logout")
+
+    other = dict(REGISTER_PAYLOAD, email="another@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+
+    assert client.get(f"/projects/{project_id}").status_code == 404
+
+
+def test_project_detail_anonymous_redirects(client):
+    client.post("/api/register", json=REGISTER_PAYLOAD)
+    client.post("/api/login",
+                json={"email": REGISTER_PAYLOAD["email"],
+                      "password": REGISTER_PAYLOAD["password"]})
+    project_id = create_project(client).json()["project"]["id"]
+    client.post("/api/logout")
+
+    response = client.get(f"/projects/{project_id}", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login.html"
+
+
+def test_dashboard_links_to_project_detail(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    page = client.get("/dashboard").text
+    assert f'href="/projects/{project_id}"' in page

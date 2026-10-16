@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.name }} | HorizonView</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            margin: 0;
+            background: #f4f6f3;
+            color: #203629;
+            font-family: Arial, sans-serif;
+        }
+
+        .detail-wrap {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 50px 20px 70px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 22px;
+            color: #173d2b;
+            font-weight: 600;
+        }
+
+        .detail-card {
+            background: white;
+            border: 1px solid #e5eae4;
+            border-radius: 14px;
+            padding: 32px;
+        }
+
+        .detail-card h1 {
+            color: #173d2b;
+            font-size: 28px;
+            margin: 12px 0 6px;
+        }
+
+        .media-tag {
+            display: inline-block;
+            background: #e6eee8;
+            color: #285d3c;
+            padding: 6px 9px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .project-progress {
+            margin-top: 10px;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .progress-track {
+            height: 9px;
+            background: #e2e8e2;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #43815a;
+            border-radius: 20px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 13px 0;
+            border-bottom: 1px solid #edf0ec;
+            font-size: 14px;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-row .label {
+            color: #718075;
+            font-weight: 600;
+        }
+
+        .detail-row .value {
+            text-align: right;
+            color: #203629;
+        }
+
+        .progress-heading {
+            margin-top: 28px;
+            font-size: 17px;
+            color: #173d2b;
+        }
+
+        .pending-note {
+            background: #fff7db;
+            border: 1px solid #ecd88c;
+            color: #674f08;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="/index.html" class="logo">Horizon<span>View</span></a>
+        <nav>
+            <a href="/dashboard">My Dashboard</a>
+            <a href="/packages.html">Packages</a>
+        </nav>
+    </header>
+
+    <main class="detail-wrap">
+        <a href="/dashboard" class="back-link">← Back to dashboard</a>
+
+        <section class="detail-card">
+            <span class="media-tag">{{ project.type_display }}</span>
+            <h1>{{ project.name }}</h1>
+
+            <div class="detail-row">
+                <span class="label">Location</span>
+                <span class="value">{{ project.location }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Status</span>
+                <span class="value">{{ project.status_display }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Estimated budget</span>
+                <span class="value">{{ project.budget_display }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Package</span>
+                <span class="value">{{ project.package_display }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Payment plan</span>
+                <span class="value">{{ project.payment_display }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Created</span>
+                <span class="value">{{ project.created_display }}</span>
+            </div>
+
+            {% if project.description %}
+            <div class="detail-row">
+                <span class="label">Description</span>
+                <span class="value">{{ project.description }}</span>
+            </div>
+            {% endif %}
+
+            <h2 class="progress-heading">Construction progress</h2>
+
+            <div class="project-progress">
+                <div class="progress-labels">
+                    <span>{{ project.status_display }}</span>
+                    <strong>{{ project.progress_percent }}%</strong>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill"
+                         style="width: {{ project.progress_percent }}%; background-color: #43815a;"></div>
+                </div>
+            </div>
+
+            <div class="pending-note">
+                Progress updates, photos and payment records will appear
+                on this page as your HorizonView project team records them.
+                Nothing here is filled in with sample data.
+            </div>
+        </section>
+    </main>
+
+</body>
+</html>

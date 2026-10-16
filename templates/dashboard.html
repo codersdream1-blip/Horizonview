@@ -652,7 +652,7 @@
                 {% for project in projects %}
                 <article class="dashboard-card">
                     <span class="media-tag">{{ project.type_display }}</span>
-                    <h3>{{ project.name }}</h3>
+                    <h3><a href="/projects/{{ project.id }}" style="color: inherit;">{{ project.name }}</a></h3>
 
                     <p>Location: {{ project.location }}</p>
 
