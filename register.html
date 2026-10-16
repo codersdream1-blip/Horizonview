@@ -192,8 +192,10 @@
 
     <script>
         const registerForm = document.getElementById("registerForm");
+        const registerMessage = document.getElementById("registerMessage");
+        const registerButton = registerForm.querySelector("button[type=submit]");
 
-        registerForm.addEventListener("submit", function(event) {
+        registerForm.addEventListener("submit", async function(event) {
             event.preventDefault();
 
             const password = document.getElementById("password").value;
@@ -205,8 +207,49 @@
                 return;
             }
 
-            message.textContent =
-                "Your form looks good! Account creation will work after we connect the secure backend.";
+            registerButton.disabled = true;
+            message.textContent = "Creating your account...";
+
+            try {
+                const response = await fetch("/api/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        full_name: document.getElementById("fullName").value.trim(),
+                        email: document.getElementById("email").value.trim(),
+                        phone: document.getElementById("phone").value.trim(),
+                        password: password
+                    })
+                });
+
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    data = null;
+                }
+
+                if (response.ok) {
+                    message.textContent = (data && data.message) ||
+                        "Account created! You can log in now.";
+                    registerForm.reset();
+                    return;
+                }
+
+                if (data && data.errors) {
+                    const firstError = Object.values(data.errors)[0];
+                    message.textContent = firstError || data.message;
+                } else {
+                    message.textContent = (data && data.message) ||
+                        "Account creation failed. Please try again.";
+                }
+
+            } catch (networkError) {
+                message.textContent =
+                    "Could not reach the HorizonView server. If you are running the site yourself, make sure the server is started.";
+            } finally {
+                registerButton.disabled = false;
+            }
         });
     </script>
 

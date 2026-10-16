@@ -153,18 +153,55 @@
     </main>
 
     <script>
-        document.getElementById("loginForm").addEventListener("submit", function(event) {
+        const loginForm = document.getElementById("loginForm");
+        const loginMessage = document.getElementById("loginMessage");
+        const loginButton = loginForm.querySelector("button[type=submit]");
+
+        loginForm.addEventListener("submit", async function(event) {
             event.preventDefault();
 
-            document.getElementById("loginMessage").textContent =
-                "Login is not connected yet. We will add secure account authentication next.";
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            loginButton.disabled = true;
+            loginMessage.textContent = "Checking your details...";
+
+            try {
+                const response = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+
+                if (response.ok) {
+                    window.location.href = "dashboard.html";
+                    return;
+                }
+
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    data = null;
+                }
+
+                loginMessage.textContent = data && data.message
+                    ? data.message
+                    : "Log in failed. Please try again.";
+
+            } catch (networkError) {
+                loginMessage.textContent =
+                    "Could not reach the HorizonView server. If you are running the site yourself, make sure the server is started.";
+            } finally {
+                loginButton.disabled = false;
+            }
         });
 
         document.getElementById("forgotPassword").addEventListener("click", function(event) {
             event.preventDefault();
 
-            document.getElementById("loginMessage").textContent =
-                "Password recovery will be available once account authentication is set up.";
+            loginMessage.textContent =
+                "Password recovery needs email support. We will add it in a later phase.";
         });
     </script>
 
