@@ -1,0 +1,13 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Secrets and local data -- never commit these
+.env
+*.db
+uploads/
+
+# OS / editor files
+Thumbs.db
+Desktop.ini
