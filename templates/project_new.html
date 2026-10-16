@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Project | HorizonView</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .new-project-section {
+            min-height: 80vh;
+            display: flex;
+            justify-content: center;
+            padding: 60px 20px;
+            background: #f7f6f1;
+        }
+
+        .project-card-form {
+            width: 100%;
+            max-width: 560px;
+            padding: 40px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 35px rgba(0, 0, 0, 0.08);
+        }
+
+        .project-card-form h1 {
+            color: #173d2b;
+            margin-bottom: 10px;
+            font-size: 30px;
+        }
+
+        .project-card-form .intro {
+            color: #666;
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+
+        .project-card-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #173d2b;
+        }
+
+        .project-card-form input,
+        .project-card-form select,
+        .project-card-form textarea {
+            width: 100%;
+            padding: 13px;
+            margin-bottom: 20px;
+            border: 1px solid #d8ded8;
+            border-radius: 7px;
+            font-size: 15px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .project-card-form input:focus,
+        .project-card-form select:focus,
+        .project-card-form textarea:focus {
+            outline: 2px solid #a8c5ae;
+            border-color: #173d2b;
+        }
+
+        .project-card-form textarea {
+            resize: vertical;
+            min-height: 110px;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: -16px;
+            margin-bottom: 20px;
+        }
+
+        .project-submit {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 7px;
+            background: #173d2b;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .project-submit:hover {
+            background: #24583d;
+        }
+
+        .project-submit:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .project-message {
+            margin-top: 15px;
+            color: #9b3a24;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #173d2b;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="/index.html" class="logo">Horizon<span>View</span></a>
+        <nav>
+            <a href="/dashboard">My Dashboard</a>
+            <a href="/packages.html">Packages</a>
+        </nav>
+    </header>
+
+    <main class="new-project-section">
+        <section class="project-card-form">
+            <a href="/dashboard" class="back-link">← Back to dashboard</a>
+
+            <h1>Create a project</h1>
+
+            <p class="intro">
+                Hello {{ full_name }}. This creates your first project record
+                in your HorizonView account. It starts at the planning stage
+                with 0% progress.
+            </p>
+
+            <form id="projectCreateForm">
+                <label for="name">Project Name *</label>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    placeholder="Example: East Legon House Build"
+                    required
+                    maxlength="200"
+                >
+
+                <label for="project_type">Project Type *</label>
+                <select id="project_type" name="project_type" required>
+                    <option value="">Select project type</option>
+                    <option value="construction">New Construction</option>
+                    <option value="renovation">Renovation</option>
+                    <option value="property-development">Property Development</option>
+                    <option value="site-monitoring">Site Monitoring</option>
+                    <option value="other">Other</option>
+                </select>
+
+                <label for="location">Project Location in Ghana *</label>
+                <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    placeholder="Example: East Legon, Accra"
+                    required
+                    maxlength="200"
+                >
+
+                <label for="budget_ghs">Estimated Budget (GH₵)</label>
+                <input
+                    type="number"
+                    id="budget_ghs"
+                    name="budget_ghs"
+                    placeholder="Example: 450000"
+                    min="1"
+                    step="any"
+                >
+                <p class="form-hint">Optional. Recorded in Ghana cedis.</p>
+
+                <label for="package">Preferred Package</label>
+                <select id="package" name="package">
+                    <option value="">Not chosen yet</option>
+                    <option value="silver">Silver</option>
+                    <option value="gold">Gold</option>
+                    <option value="platinum">Platinum</option>
+                </select>
+
+                <label for="payment_arrangement">Payment Arrangement</label>
+                <select id="payment_arrangement" name="payment_arrangement">
+                    <option value="">To be discussed</option>
+                    <option value="pay-all-at-once">Pay all at once</option>
+                    <option value="stage-by-stage">Pay stage by stage</option>
+                    <option value="save-toward-target">Save toward a target</option>
+                </select>
+
+                <label for="description">Description</label>
+                <textarea
+                    id="description"
+                    name="description"
+                    placeholder="Describe what you want to build..."
+                ></textarea>
+
+                <button type="submit" class="project-submit">Create Project</button>
+
+                <p id="projectMessage" class="project-message" role="status" aria-live="polite"></p>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        const form = document.getElementById("projectCreateForm");
+        const message = document.getElementById("projectMessage");
+        const button = form.querySelector("button[type=submit]");
+
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            button.disabled = true;
+            message.textContent = "Creating your project...";
+
+            const values = {
+                name: document.getElementById("name").value.trim(),
+                project_type: document.getElementById("project_type").value,
+                location: document.getElementById("location").value.trim(),
+                budget_ghs: document.getElementById("budget_ghs").value.trim(),
+                package: document.getElementById("package").value,
+                payment_arrangement: document.getElementById("payment_arrangement").value,
+                description: document.getElementById("description").value.trim()
+            };
+
+            try {
+                const response = await fetch("/api/projects", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(values)
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                let data = null;
+                try { data = await response.json(); } catch (e) { data = null; }
+
+                if (response.ok) {
+                    window.location.href = "/dashboard";
+                    return;
+                }
+
+                if (data && data.errors) {
+                    message.textContent = Object.values(data.errors).join(" ");
+                } else {
+                    message.textContent = (data && data.message) ||
+                        "Project creation failed. Please try again.";
+                }
+            } catch (networkError) {
+                message.textContent =
+                    "Could not reach the HorizonView server. Make sure it is running.";
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+</html>

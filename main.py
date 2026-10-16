@@ -22,6 +22,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 import auth
 import db
+import projects
 
 load_dotenv()
 
@@ -55,16 +56,9 @@ app.add_middleware(
 db.init_db()
 
 app.include_router(auth.router)
+app.include_router(projects.router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
-
-
-def current_user(request: Request) -> dict | None:
-    """Return the logged-in user's DB record, or None."""
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return None
-    return db.get_user_by_id(user_id)
 
 
 # --- Health check -----------------------------------------------------
@@ -100,12 +94,17 @@ def logout_page(request: Request):
 
 @app.get("/dashboard")
 def dashboard(request: Request):
-    user = current_user(request)
+    user = auth.get_current_user(request)
     if not user:
         return RedirectResponse("/login.html", status_code=303)
 
     name_parts = [p for p in user["full_name"].split() if p]
     initials = "".join(p[0].upper() for p in name_parts[:2]) or "HV"
+
+    user_projects = [
+        projects.display_fields(p)
+        for p in db.get_projects_for_user(user["id"])
+    ]
 
     return templates.TemplateResponse(
         request=request,
@@ -114,6 +113,26 @@ def dashboard(request: Request):
             "full_name": user["full_name"],
             "email": user["email"],
             "initials": initials,
+            "projects": user_projects,
+        },
+    )
+
+
+# The project creation page. Like /dashboard, it is personalised and
+# must never be viewable without a logged-in session.
+
+
+@app.get("/projects/new")
+def new_project_page(request: Request):
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse("/login.html", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="project_new.html",
+        context={
+            "full_name": user["full_name"],
         },
     )
 

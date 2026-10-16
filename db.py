@@ -23,6 +23,21 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    project_type TEXT NOT NULL,
+    location TEXT NOT NULL,
+    description TEXT,
+    budget_ghs REAL,
+    package TEXT,
+    payment_arrangement TEXT,
+    status TEXT NOT NULL DEFAULT 'planning',
+    progress_percent INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -62,3 +77,34 @@ def get_user_by_id(user_id: int) -> dict | None:
             "SELECT * FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+def create_project(
+    owner_id: int,
+    name: str,
+    project_type: str,
+    location: str,
+    description: str | None,
+    budget_ghs: float | None,
+    package: str | None,
+    payment_arrangement: str | None,
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO projects (owner_id, name, project_type, location, "
+            "description, budget_ghs, package, payment_arrangement, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (owner_id, name, project_type, location, description,
+             budget_ghs, package, payment_arrangement, now),
+        )
+        return cursor.lastrowid
+
+
+def get_projects_for_user(owner_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM projects WHERE owner_id = ? ORDER BY created_at DESC",
+            (owner_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]

@@ -295,6 +295,12 @@
             line-height: 1.6;
         }
 
+        .project-note {
+            border-top: 1px solid #edf0ec;
+            padding-top: 12px;
+            margin-top: 4px;
+        }
+
         .feature-icon {
             font-size: 30px;
             margin-bottom: 14px;
@@ -589,7 +595,7 @@
 
         <nav>
             <a href="#overview" class="active">▦ &nbsp; Overview</a>
-            <a href="#progress">▤ &nbsp; Project Progress</a>
+            <a href="#projects">▤ &nbsp; My Projects</a>
             <a href="#photos">▧ &nbsp; Site Photos</a>
             <a href="#recorded-videos">▶ &nbsp; Recorded Videos</a>
             <a href="#live-video">◉ &nbsp; Live Video</a>
@@ -634,72 +640,69 @@
                 </p>
             </section>
 
-            <!-- PROJECT OVERVIEW -->
-            <section class="project-header" id="progress">
+            <!-- MY PROJECTS (real records from the database) -->
 
-                <div class="project-header-top">
-                    <div>
-                        <h2>My Construction Project</h2>
-                        <p>Project location: Accra, Ghana</p>
-                        <p style="margin-top:6px;">
-                            Project reference: HV-DEMO-001
-                        </p>
+            <div class="section-heading" id="projects">
+                <h2>My Projects</h2>
+                <a href="/projects/new">+ New Project</a>
+            </div>
+
+            {% if projects %}
+            <section class="card-grid">
+                {% for project in projects %}
+                <article class="dashboard-card">
+                    <span class="media-tag">{{ project.type_display }}</span>
+                    <h3>{{ project.name }}</h3>
+
+                    <p>Location: {{ project.location }}</p>
+
+                    <p>
+                        <strong>Estimated budget:</strong>
+                        {{ project.budget_display }}<br>
+                        <strong>Payment plan:</strong>
+                        {{ project.payment_display }}<br>
+                        <strong>Package:</strong>
+                        {{ project.package_display }}
+                    </p>
+
+                    <div class="project-progress">
+                        <div class="progress-labels">
+                            <span>{{ project.status_display }}</span>
+                            <strong>{{ project.progress_percent }}%</strong>
+                        </div>
+
+                        <div class="progress-track">
+                            <div class="progress-fill"
+                                 style="width: {{ project.progress_percent }}%;"></div>
+                        </div>
                     </div>
 
-                    <span class="status-pill">● In Progress</span>
-                </div>
-
-                <div class="project-progress">
-                    <div class="progress-labels">
-                        <span>Overall Construction Progress</span>
-                        <strong>65%</strong>
-                    </div>
-
-                    <div class="progress-track">
-                        <div class="progress-fill"></div>
-                    </div>
-                </div>
-
+                    <p class="project-note">
+                        Progress updates appear here as your
+                        project team records them.
+                    </p>
+                </article>
+                {% endfor %}
             </section>
 
-            <!-- SUMMARY -->
-            <section class="summary-grid">
+            {% else %}
+            <section class="card-grid">
+                <article class="dashboard-card">
+                    <div class="feature-icon">🏗️</div>
+                    <h3>No projects yet</h3>
 
-                <div class="summary-card">
-                    <div class="summary-icon">🏗️</div>
-                    <div class="summary-label">Current Stage</div>
-                    <div class="summary-value" style="font-size:20px;">
-                        Construction
-                    </div>
-                    <div class="summary-note">Latest recorded stage</div>
-                </div>
+                    <p>
+                        Create your first project record. It belongs to your
+                        HorizonView account and starts at the planning stage
+                        with 0% progress.
+                    </p>
 
-                <div class="summary-card" id="budget">
-                    <div class="summary-icon">₵</div>
-                    <div class="summary-label">Project Budget</div>
-                    <div class="summary-value">GH₵450k</div>
-                    <div class="summary-note">Illustrative budget</div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-icon">💳</div>
-                    <div class="summary-label">Amount Spent</div>
-                    <div class="summary-value">GH₵315k</div>
-                    <div class="summary-note">Illustrative spending</div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-icon">📅</div>
-                    <div class="summary-label">Next Update</div>
-                    <div class="summary-value" style="font-size:20px;">
-                        Pending
-                    </div>
-                    <div class="summary-note">
-                        Awaiting project team
-                    </div>
-                </div>
-
+                    <a href="/projects/new" class="feature-button">
+                        Create My First Project
+                    </a>
+                </article>
             </section>
+            {% endif %}
 
             <!-- PHOTOS AND VIDEOS -->
             <div class="section-heading" id="photos">
@@ -777,7 +780,7 @@
                 </article>
 
                 <!-- BUDGET -->
-                <article class="dashboard-card">
+                <article class="dashboard-card" id="budget">
                     <div class="feature-icon">💰</div>
 
                     <h3>Budget & Payments</h3>
@@ -899,8 +902,9 @@
             </section>
 
             <p class="demo-note">
-                HorizonView dashboard prototype. All displayed project
-                details and figures are examples, not live customer data.
+                Your account details and My Projects records are real.
+                The other sections still show prototype panels while we
+                connect photos, videos, budgets and messages.
             </p>
 
         </div>
