@@ -303,6 +303,84 @@ color: #7a807b;
 
 }
 
+/* SUBMISSION RESPONSE */
+
+.form-response {
+
+margin-top: 35px;
+
+padding: 30px;
+
+background: #f2f7f3;
+
+border: 1px solid #cfe3d5;
+
+border-radius: 8px;
+
+}
+
+.form-response h3 {
+
+color: #173d2b;
+
+font-size: 21px;
+
+margin-bottom: 12px;
+
+}
+
+.form-response p {
+
+color: #4c5b52;
+
+font-size: 14px;
+
+margin-bottom: 14px;
+
+line-height: 1.6;
+
+}
+
+.form-response ul {
+
+padding-left: 20px;
+
+margin-bottom: 14px;
+
+color: #33463b;
+
+font-size: 14px;
+
+line-height: 2;
+
+}
+
+.form-response .response-note {
+
+font-size: 13px;
+
+color: #667069;
+
+border-top: 1px solid #dce9de;
+
+padding-top: 14px;
+
+margin-bottom: 0;
+
+}
+
+.form-message {
+
+margin-top: 18px;
+
+color: #9b3a24;
+
+font-size: 14px;
+
+font-weight: 600;
+
+}
+
 
 
 

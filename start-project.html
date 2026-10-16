@@ -120,7 +120,7 @@
 
 
 
-    <form class="project-form">
+    <form class="project-form" id="projectForm">
 
 
         <!-- PERSONAL INFORMATION -->
@@ -368,6 +368,76 @@
                 </div>
 
 
+
+                <div class="form-group">
+
+                    <label for="preferred-package">
+                        Preferred Management Package
+                    </label>
+
+                    <select
+                        id="preferred-package"
+                        name="preferred_package"
+                    >
+
+                        <option value="">
+                            Not sure yet — advise me
+                        </option>
+
+                        <option value="silver">
+                            Silver — photos and reports
+                        </option>
+
+                        <option value="gold">
+                            Gold — videos and budget tracking
+                        </option>
+
+                        <option value="platinum">
+                            Platinum — everything plus live site tours
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="payment-arrangement">
+                        Planned Payment Arrangement
+                    </label>
+
+                    <select
+                        id="payment-arrangement"
+                        name="payment_arrangement"
+                    >
+
+                        <option value="">
+                            Select payment arrangement
+                        </option>
+
+                        <option value="pay-all-at-once">
+                            Pay all at once
+                        </option>
+
+                        <option value="stage-by-stage">
+                            Pay stage by stage
+                        </option>
+
+                        <option value="save-toward-target">
+                            Save toward a target
+                        </option>
+
+                        <option value="discuss-later">
+                            I'd like to discuss options
+                        </option>
+
+                    </select>
+
+                </div>
+
+
             </div>
 
         </div>
@@ -469,6 +539,7 @@
             <button
                 type="submit"
                 class="submit-btn"
+                id="submitButton"
             >
                 Submit Project Request
             </button>
@@ -481,6 +552,24 @@
             </p>
 
         </div>
+
+        <div id="projectResponse" class="form-response" hidden>
+
+            <h3 id="responseTitle"></h3>
+
+            <p id="responseIntro"></p>
+
+            <p>
+                <strong>What you entered (from this page only):</strong>
+            </p>
+
+            <ul id="responseSummary"></ul>
+
+            <p class="response-note" id="responseNote"></p>
+
+        </div>
+
+        <p id="projectMessage" class="form-message" role="status" aria-live="polite"></p>
 
 
     </form>
@@ -506,6 +595,84 @@
     </p>
 
 </footer>
+
+<script>
+
+    const projectForm = document.getElementById("projectForm");
+    const projectMessage = document.getElementById("projectMessage");
+
+    // Returns the visible text of the matching <option>, so the
+    // summary reads in natural language instead of raw values.
+    function optionText(select, value) {
+        if (!value) {
+            return "Not provided";
+        }
+        const match = select ? select.querySelector('option[value="' + value + '"]') : null;
+        return match ? match.textContent.trim() : value;
+    }
+
+    function showResponse(data) {
+        const response = document.getElementById("projectResponse");
+
+        document.getElementById("responseTitle").textContent =
+            "Request noted — not sent anywhere yet.";
+
+        document.getElementById("responseIntro").textContent =
+            "Thank you, " + data.get("full_name") + ". This website does not have a connected server yet, so your project details have not left this browser page. No request has reached HorizonView.";
+
+        const summary = document.getElementById("responseSummary");
+        summary.textContent = "";
+
+        // Summary built line by line using textContent only,
+        // so no HTML can be injected through the form.
+        function addRow(label, value) {
+            const li = document.createElement("li");
+            li.textContent = label + ": " + value;
+            summary.appendChild(li);
+        }
+
+        addRow("Full name", data.get("full_name"));
+        addRow("Email", data.get("email"));
+        addRow("Phone / WhatsApp", data.get("phone"));
+        addRow("Where you currently live", data.get("country") || "Not provided");
+        addRow("Project type", optionText(projectForm.elements["project_type"], data.get("project_type")));
+        addRow("Property type", optionText(projectForm.elements["property_type"], data.get("property_type")));
+        addRow("Project location", data.get("location"));
+        addRow("Estimated budget", optionText(projectForm.elements["budget"], data.get("budget")));
+        addRow("Preferred package", optionText(projectForm.elements["preferred_package"], data.get("preferred_package")));
+        addRow("Payment arrangement", optionText(projectForm.elements["payment_arrangement"], data.get("payment_arrangement")));
+        addRow("Desired start date", data.get("start_date") || "Not provided");
+
+        const details = (data.get("description") || "").trim();
+        addRow("Project description", details ? details : "Not provided");
+
+        document.getElementById("responseNote").textContent =
+            "Once the secure backend is connected, here is what happens next: (1) a HorizonView representative reviews your request; (2) you are contacted to confirm the scope, budget, package and payment arrangement; (3) only after agreements are confirmed does any work or payment begin.";
+
+        response.hidden = false;
+        response.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    projectForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const data = new FormData(projectForm);
+
+        // Server-side validation will be the real security boundary later.
+        // This client-side check is only for quick feedback.
+        if (!data.get("full_name") || !data.get("email") || !data.get("phone")
+            || !data.get("project_type") || !data.get("location")) {
+            projectMessage.textContent =
+                "Please complete the required fields before submitting.";
+            projectMessage.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
+
+        projectMessage.textContent = "";
+        showResponse(data);
+    });
+
+</script>
 
 </body>
 
