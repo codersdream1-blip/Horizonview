@@ -156,10 +156,15 @@ def project_detail(project_id: int, request: Request):
     shown["created_display"] = shown["created_at"][:10]
     shown["id"] = project_id
 
+    updates = [
+        projects.display_update(u, owner_id=user["id"])
+        for u in db.get_updates_for_project(project_id)
+    ]
+
     return templates.TemplateResponse(
         request=request,
         name="project_detail.html",
-        context={"project": shown},
+        context={"project": shown, "updates": updates, "stages": projects.STAGES},
     )
 
 

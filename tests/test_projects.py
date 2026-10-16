@@ -183,3 +183,103 @@ def test_dashboard_links_to_project_detail(client):
 
     page = client.get("/dashboard").text
     assert f'href="/projects/{project_id}"' in page
+
+
+def add_update(client, project_id, title="Foundation completed",
+               progress="40", stage="foundation"):
+    return client.post(f"/api/projects/{project_id}/updates", json={
+        "title": title,
+        "body": "Foundation works were completed this week.",
+        "stage": stage,
+        "progress_percent": progress,
+    })
+
+
+def test_add_update_sets_project_progress(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    assert add_update(client, project_id, progress="40").status_code == 201
+
+    stored = db.get_project_by_id(project_id)
+    assert stored["progress_percent"] == 40
+
+    updates = db.get_updates_for_project(project_id)
+    assert len(updates) == 1
+    assert updates[0]["title"] == "Foundation completed"
+    assert updates[0]["progress_percent"] == 40
+
+
+def test_progress_only_moves_forward(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    add_update(client, project_id, progress="60")
+    add_update(client, project_id, title="Prep works", progress="30")
+
+    stored = db.get_project_by_id(project_id)
+    assert stored["progress_percent"] == 60
+
+
+def test_update_validation(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    response = add_update(client, project_id, title="x", progress="150")
+    assert response.status_code == 400
+    errors = response.json()["errors"]
+    assert "title" in errors and "progress_percent" in errors
+    assert db.get_updates_for_project(project_id) == []
+
+
+def test_other_user_cannot_add_update(client):
+    client.post("/api/register", json=REGISTER_PAYLOAD)
+    client.post("/api/login",
+                json={"email": REGISTER_PAYLOAD["email"],
+                      "password": REGISTER_PAYLOAD["password"]})
+    project_id = create_project(client).json()["project"]["id"]
+    client.post("/api/logout")
+
+    other = dict(REGISTER_PAYLOAD, email="stranger@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+
+    assert add_update(client, project_id).status_code == 404
+
+
+def test_detail_page_shows_timeline_and_form(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    add_update(client, project_id, title="Blockwork started",
+               progress="25", stage="blockwork")
+
+    page = client.get(f"/projects/{project_id}").text
+    assert "Blockwork started" in page
+    assert "Blockwork" in page
+    assert "Progress set to 25%" in page
+    assert "Record a progress note" in page
+    # "form action-free fetch style": the form id is present
+    assert 'id="addUpdateForm"' in page
+
+
+def test_progress_updates_detail_percent(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    add_update(client, project_id, progress="45")
+
+    page = client.get(f"/projects/{project_id}").text
+    assert "45%" in page
+
+
+def test_anonymous_cannot_add_or_list_updates(client):
+    # 401 (not 404) for anonymous users: identity is checked first,
+    # so nothing about project existence is revealed.
+    assert client.get("/api/projects/1/updates").status_code == 401
+    response = client.post(
+        "/api/projects/1/updates",
+        json={"title": "Note", "body": "Some body text here.",
+              "progress_percent": 10},
+    )
+    assert response.status_code == 401

@@ -114,6 +114,141 @@
             line-height: 1.6;
             margin-top: 24px;
         }
+
+        .update-timeline {
+            margin-top: 12px;
+        }
+
+        .update-card {
+            background: #f7f9f6;
+            border: 1px solid #e2e8e3;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+        }
+
+        .update-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: baseline;
+        }
+
+        .update-head strong {
+            color: #173d2b;
+            font-size: 15px;
+        }
+
+        .update-date {
+            color: #7b867e;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .update-stage {
+            color: #285d3c;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 8px 0 4px;
+        }
+
+        .update-body {
+            color: #33463b;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 8px 0 10px;
+        }
+
+        .update-meta {
+            color: #8a948d;
+            font-size: 12px;
+            border-top: 1px solid #e6ece7;
+            padding-top: 8px;
+        }
+
+        .update-empty {
+            color: #718075;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .add-update-box {
+            margin-top: 30px;
+            background: #f2f7f3;
+            border: 1px solid #cfe3d5;
+            border-radius: 14px;
+            padding: 26px;
+        }
+
+        .add-update-box h3 {
+            color: #173d2b;
+            margin-bottom: 18px;
+        }
+
+        .add-update-box label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #173d2b;
+            margin-bottom: 6px;
+        }
+
+        .add-update-box .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .add-update-box input,
+        .add-update-box select,
+        .add-update-box textarea {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #d8ded8;
+            border-radius: 7px;
+            font-size: 14px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .add-update-box input:focus,
+        .add-update-box select:focus,
+        .add-update-box textarea:focus {
+            outline: 2px solid #a8c5ae;
+            border-color: #173d2b;
+        }
+
+        .add-update-box textarea {
+            resize: vertical;
+            margin-bottom: 16px;
+        }
+
+        .form-msg {
+            margin-top: 12px;
+            color: #9b3a24;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .note-explain {
+            margin-top: 16px;
+            font-size: 12px;
+            color: #718075;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 620px) {
+            .add-update-box .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .update-head {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -188,8 +323,134 @@
                 on this page as your HorizonView project team records them.
                 Nothing here is filled in with sample data.
             </div>
+
+            <h2 class="progress-heading">Progress notes</h2>
+
+            {% if updates %}
+            <section class="update-timeline">
+                {% for u in updates %}
+                <article class="update-card">
+                    <div class="update-head">
+                        <strong>{{ u.title }}</strong>
+                        <span class="update-date">{{ u.created_display }}</span>
+                    </div>
+
+                    {% if u.stage_display %}
+                    <div class="update-stage">Stage: {{ u.stage_display }} ·
+                        Progress set to {{ u.progress_percent }}%</div>
+                    {% endif %}
+
+                    <p class="update-body">{{ u.body }}</p>
+                    <div class="update-meta">Recorded by {{ u.author_display }}</div>
+                </article>
+                {% endfor %}
+            </section>
+            {% else %}
+            <p class="update-empty">
+                No progress notes yet. Record your first one below.
+            </p>
+            {% endif %}
+
+            <section class="add-update-box">
+                <h3>Record a progress note</h3>
+
+                <form id="addUpdateForm">
+                    <div class="grid-2">
+                        <div>
+                            <label for="updTitle">Note title *</label>
+                            <input type="text" id="updTitle" placeholder="Example: Foundation completed"
+                                   maxlength="150" required>
+                        </div>
+
+                        <div>
+                            <label for="updStage">Construction stage</label>
+                            <select id="updStage">
+                                <option value="">Not specified</option>
+                                {% for key, label in stages.items() %}
+                                <option value="{{ key }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="updProgress">Progress % *</label>
+                            <input type="number" id="updProgress" min="0" max="100" step="1"
+                                   placeholder="0-100" required>
+                        </div>
+                    </div>
+
+                    <label for="updBody">What happened *</label>
+                    <textarea id="updBody" rows="4" maxlength="4000"
+                              placeholder="Describe the work completed since the last note..."></textarea>
+
+                    <button type="submit" class="project-submit">Record Progress Note</button>
+                    <p id="updateMessage" class="form-msg" role="status" aria-live="polite"></p>
+                </form>
+
+                <p class="note-explain">
+                    For now the owner records these notes. In later phases
+                    your HorizonView project team records them, and they
+                    appear here with timestamps.
+                </p>
+            </section>
         </section>
     </main>
+
+    <script>
+        const updateForm = document.getElementById("addUpdateForm");
+        const updateMessage = document.getElementById("updateMessage");
+        const updateButton = updateForm.querySelector("button[type=submit]");
+
+        updateForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            updateButton.disabled = true;
+            updateMessage.textContent = "Recording...";
+
+            const projectId = window.location.pathname.split("/")[2];
+            const values = {
+                title: document.getElementById("updTitle").value.trim(),
+                stage: document.getElementById("updStage").value,
+                progress_percent: document.getElementById("updProgress").value,
+                body: document.getElementById("updBody").value.trim()
+            };
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/updates`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(values)
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                let data = null;
+                try { data = await response.json(); } catch (e) { data = null; }
+
+                if (response.ok) {
+                    // Reload so the note and the new progress come from the
+                    // database itself -- never from local guesses.
+                    window.location.reload();
+                    return;
+                }
+
+                if (data && data.errors) {
+                    updateMessage.textContent = Object.values(data.errors).join(" ");
+                } else {
+                    updateMessage.textContent = (data && data.message) ||
+                        "Recording failed. Please try again.";
+                }
+            } catch (networkError) {
+                updateMessage.textContent =
+                    "Could not reach the HorizonView server. Make sure it is running.";
+            } finally {
+                updateButton.disabled = false;
+            }
+        });
+    </script>
 
 </body>
 </html>

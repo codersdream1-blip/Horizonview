@@ -31,6 +31,18 @@ PAYMENT_ARRANGEMENTS = {
     "discuss-later": "To be discussed",
 }
 
+STAGES = {
+    "site-clearing": "Site clearing",
+    "foundation": "Foundation",
+    "blockwork": "Blockwork",
+    "roofing": "Roofing",
+    "services": "Plumbing & Electrical",
+    "rendering": "Rendering",
+    "finishing": "Finishing",
+    "handover": "Handover",
+    "other": "Other stage",
+}
+
 # Sanity ceiling so a typo cannot store absurd money values.
 MAX_BUDGET_GHS = 1_000_000_000
 
@@ -108,6 +120,109 @@ def display_fields(project: dict) -> dict:
     project["status_display"] = project["status"].capitalize()
     # progress_percent kept as-is (0 for now; updated by the team later)
     return project
+
+
+def display_update(update: dict, owner_id: int) -> dict:
+    """Template-ready version of a progress note."""
+    update = dict(update)
+    if update["stage"]:
+        update["stage_display"] = STAGES.get(update["stage"], update["stage"])
+    else:
+        update["stage_display"] = None
+    update["created_display"] = update["created_at"][:10]
+    update["author_display"] = "You" if update["author_id"] == owner_id else "HorizonView team"
+    return update
+
+
+@router.post("/projects/{project_id}/updates")
+async def add_project_update(project_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        # Same stance as project detail: no existence confirmation.
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    try:
+        data = await request.json()
+    except Exception:
+        return bad_request("Send the request as JSON data.")
+
+    if not isinstance(data, dict):
+        return bad_request("Send the request as JSON data.")
+
+    errors: dict = {}
+
+    title = str(data.get("title", "")).strip()
+    body = str(data.get("body", "")).strip()
+    stage = str(data.get("stage", "") or "").strip().lower()
+    stage = stage if stage in STAGES else None
+
+    if not 3 <= len(title) <= 150:
+        errors["title"] = "Title must be between 3 and 150 characters."
+
+    if not 10 <= len(body) <= 4000:
+        errors["body"] = "Describe the progress in at least 10 characters (max 4000)."
+
+    progress_raw = str(data.get("progress_percent", "") or "").strip()
+    try:
+        progress = int(float(progress_raw))
+    except ValueError:
+        progress = -1
+    if not 0 <= progress <= 100:
+        errors["progress_percent"] = "Progress must be a number from 0 to 100."
+
+    if errors:
+        return bad_request("Please fix the highlighted fields.", errors)
+
+    db.create_project_update(
+        project_id=project_id,
+        author_id=user["id"],
+        title=title,
+        body=body,
+        stage=stage,
+        progress_percent=progress,
+    )
+
+    # Overall progress only ever moves forward (max).
+    new_progress = max(project["progress_percent"], progress)
+    db.set_project_progress(project_id, new_progress)
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Progress note recorded.",
+            "project_progress": new_progress,
+        },
+        status_code=201,
+    )
+
+
+@router.get("/projects/{project_id}/updates")
+async def get_project_updates(project_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    updates = [
+        display_update(u, owner_id=user["id"])
+        for u in db.get_updates_for_project(project_id)
+    ]
+    return {"ok": True, "updates": updates}
 
 
 @router.get("/projects")

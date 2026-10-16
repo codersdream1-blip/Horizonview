@@ -38,6 +38,19 @@ CREATE TABLE IF NOT EXISTS projects (
     progress_percent INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+
+-- Dated progress notes ("milestone entries") for a project.
+-- author_id records who wrote the note (owner now, team later).
+CREATE TABLE IF NOT EXISTS project_updates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    author_id INTEGER NOT NULL REFERENCES users(id),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    stage TEXT,
+    progress_percent INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -116,3 +129,39 @@ def get_project_by_id(project_id: int) -> dict | None:
             "SELECT * FROM projects WHERE id = ?", (project_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+def set_project_progress(project_id: int, progress_percent: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE projects SET progress_percent = ? WHERE id = ?",
+            (progress_percent, project_id),
+        )
+
+
+def create_project_update(
+    project_id: int,
+    author_id: int,
+    title: str,
+    body: str,
+    stage: str | None,
+    progress_percent: int,
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO project_updates (project_id, author_id, title, body, "
+            "stage, progress_percent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (project_id, author_id, title, body, stage, progress_percent, now),
+        )
+        return cursor.lastrowid
+
+
+def get_updates_for_project(project_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM project_updates WHERE project_id = ? "
+            "ORDER BY created_at DESC, id DESC",
+            (project_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
