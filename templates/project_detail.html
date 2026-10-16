@@ -282,9 +282,109 @@
             font-size: 11px;
         }
 
+        .budget-panel {
+            margin-top: 12px;
+        }
+
+        .budget-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .stat-box {
+            background: #f2f7f3;
+            border: 1px solid #cfe3d5;
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 12px;
+            color: #5e7165;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            color: #173d2b;
+        }
+
+        .stat-value.over-budget {
+            color: #b3543a;
+        }
+
+        .budget-track {
+            max-width: 420px;
+        }
+
+        .budget-note {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #718075;
+        }
+
+        .expense-list {
+            margin-top: 14px;
+        }
+
+        .expense-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid #e6ece7;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: white;
+        }
+
+        .expense-date {
+            color: #7b867e;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .expense-title {
+            flex: 1;
+            color: #203629;
+            font-size: 14px;
+        }
+
+        .cat-chip {
+            background: #eef4ef;
+            color: #285d3c;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .expense-amount {
+            font-weight: 600;
+            color: #173d2b;
+            white-space: nowrap;
+        }
+
         @media (max-width: 620px) {
             .add-update-box .grid-2 {
                 grid-template-columns: 1fr;
+            }
+
+            .budget-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .expense-row {
+                flex-wrap: wrap;
+            }
+
+            .expense-title {
+                flex-basis: 100%;
+                order: 3;
             }
 
             .photo-grid {
@@ -365,6 +465,98 @@
                          style="width: {{ project.progress_percent }}%; background-color: #43815a;"></div>
                 </div>
             </div>
+
+            <h2 class="progress-heading">Budget &amp; spending</h2>
+
+            {% if "budget_display" in expense_summary %}
+            <section class="budget-panel">
+                <div class="budget-stats">
+                    <div class="stat-box">
+                        <span class="stat-label">Project budget</span>
+                        <strong class="stat-value">{{ expense_summary.budget_display }}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Spent so far</span>
+                        <strong class="stat-value">{{ expense_summary.total_spent_display }}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Remaining</span>
+                        <strong class="stat-value {{ 'over-budget' if expense_summary.remaining < 0 else '' }}">{{ expense_summary.remaining_display }}</strong>
+                    </div>
+                </div>
+                <div class="progress-track budget-track">
+                    <div class="progress-fill"
+                         style="width: {{ [expense_summary.spent_percent, 100] | min }}%; background-color: {{ '#b3543a' if expense_summary.spent_percent > 100 else '#43815a' }};"></div>
+                </div>
+                <div class="budget-note">
+                    {{ expense_summary.spent_percent }}% of the budget recorded as spent.
+                </div>
+            </section>
+            {% else %}
+            <p class="update-empty">
+                This project has no budget recorded yet, so there is nothing
+                to compare spending against. Total spent so far:
+                <strong>{{ expense_summary.total_spent_display }}</strong>.
+            </p>
+            {% endif %}
+
+            <section class="expense-list">
+                {% if expenses %}
+                {% for e in expenses %}
+                <div class="expense-row">
+                    <span class="expense-date">{{ e.spent_on }}</span>
+                    <span class="expense-title">{{ e.title }}</span>
+                    <span class="cat-chip">{{ e.category_display }}</span>
+                    <span class="expense-amount">{{ e.amount_display }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="update-empty">No expenses recorded yet.</p>
+                {% endif %}
+            </section>
+
+            <section class="add-update-box">
+                <h3>Log an expense</h3>
+
+                <form id="expenseForm">
+                    <div class="grid-2">
+                        <div>
+                            <label for="expTitle">What was the money for? *</label>
+                            <input type="text" id="expTitle" maxlength="150"
+                                   placeholder="Example: 20 bags of cement" required>
+                        </div>
+
+                        <div>
+                            <label for="expAmount">Amount (GH₵) *</label>
+                            <input type="text" id="expAmount" inputmode="decimal"
+                                   placeholder="Example: 1,500 or 1500.50" required>
+                        </div>
+
+                        <div>
+                            <label for="expCategory">Category *</label>
+                            <select id="expCategory" required>
+                                {% for key, label in categories.items() %}
+                                <option value="{{ key }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="expDate">Date of spending</label>
+                            <input type="date" id="expDate" value="{{ today }}">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="project-submit">Log Expense</button>
+                    <p id="expenseMessage" class="form-msg" role="status" aria-live="polite"></p>
+                </form>
+
+                <p class="note-explain">
+                    This ledger is recorded by you for now. Verified receipts
+                    and payment records arrive with the payments phase.
+                    All amounts are in Ghana cedis.
+                </p>
+            </section>
 
             <h2 class="progress-heading">Site photos</h2>
 
@@ -597,6 +789,60 @@
                     "Could not reach the HorizonView server. Make sure it is running.";
             } finally {
                 photoButton.disabled = false;
+            }
+        });
+
+        const expenseForm = document.getElementById("expenseForm");
+        const expenseMessage = document.getElementById("expenseMessage");
+        const expenseButton = expenseForm.querySelector("button[type=submit]");
+
+        expenseForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            expenseButton.disabled = true;
+            expenseMessage.textContent = "Recording...";
+
+            const projectId = window.location.pathname.split("/")[2];
+            const values = {
+                title: document.getElementById("expTitle").value.trim(),
+                amount_ghs: document.getElementById("expAmount").value,
+                category: document.getElementById("expCategory").value,
+                spent_on: document.getElementById("expDate").value
+            };
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/expenses`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(values)
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                let data = null;
+                try { data = await response.json(); } catch (e) { data = null; }
+
+                if (response.ok) {
+                    // Reload so totals come from the database, never guesses.
+                    window.location.reload();
+                    return;
+                }
+
+                if (data && data.errors) {
+                    expenseMessage.textContent =
+                        Object.values(data.errors).join(" ");
+                } else {
+                    expenseMessage.textContent = (data && data.message) ||
+                        "Recording failed. Please try again.";
+                }
+            } catch (networkError) {
+                expenseMessage.textContent =
+                    "Could not reach the HorizonView server. Make sure it is running.";
+            } finally {
+                expenseButton.disabled = false;
             }
         });
     </script>

@@ -4,6 +4,7 @@ control. Every test uses its own temporary database.
 """
 
 import pytest
+from datetime import datetime
 from fastapi.testclient import TestClient
 
 import db
@@ -421,3 +422,136 @@ def test_upload_photo_requires_ownership(client, tmp_path, monkeypatch):
                       "password": other["password"]})
 
     assert upload_photo(client, project_id).status_code == 404
+
+
+# ---------- Budget & expenses ----------
+
+def log_expense(client, project_id, title="20 bags of cement",
+                amount="1500", category="materials", spent_on=""):
+    payload = {"title": title, "amount_ghs": amount, "category": category}
+    if spent_on:
+        payload["spent_on"] = spent_on
+    return client.post(f"/api/projects/{project_id}/expenses", json=payload)
+
+
+def test_log_expense_updates_running_totals(client):
+    make_logged_in(client)
+    project_id = create_project(client, budget="50000").json()["project"]["id"]
+
+    assert log_expense(client, project_id, amount="1500").status_code == 201
+    assert log_expense(client, project_id, title="Carpenter week 1",
+                       amount="2,250.50", category="labour").status_code == 201
+
+    expenses = db.get_expenses_for_project(project_id)
+    assert len(expenses) == 2
+
+    # The comma-format amount was parsed as a real number.
+    response = client.get(f"/api/projects/{project_id}/expenses").json()
+    summary = response["summary"]
+    assert summary["total_spent"] == round(1500 + 2250.50, 2)
+    assert summary["total_spent_display"] == "GH₵3,750.50"
+    assert summary["remaining"] == round(50000 - 3750.50, 2)
+    assert summary["spent_percent"] == 8
+
+
+def test_expense_defaults_to_today(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    log_expense(client, project_id)
+    stored = db.get_expenses_for_project(project_id)[0]
+    assert stored["spent_on"] == datetime.now().strftime("%Y-%m-%d")
+
+
+def test_expense_validation_rejects_bad_values(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    response = log_expense(client, project_id, amount="-40")
+    assert response.status_code == 400
+    assert "amount_ghs" in response.json()["errors"]
+
+    response = log_expense(client, project_id, amount="12,ab")
+    assert response.status_code == 400
+
+    response = log_expense(client, project_id, category="suspicious")
+    assert response.status_code == 400
+    assert "category" in response.json()["errors"]
+
+    response = log_expense(client, project_id, spent_on="16/10/2026")
+    assert response.status_code == 400
+    assert "spent_on" in response.json()["errors"]
+
+    assert db.get_expenses_for_project(project_id) == []
+
+
+def test_expense_access_control(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    log_expense(client, project_id)
+    client.post("/api/logout")
+
+    assert log_expense(TestClient(main.app), project_id).status_code == 401
+    assert client.get(f"/api/projects/{project_id}/expenses").status_code == 401
+
+    other = dict(REGISTER_PAYLOAD, email="stranger4@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+    assert client.get(f"/api/projects/{project_id}/expenses").status_code == 404
+    assert log_expense(client, project_id).status_code == 404
+
+
+def test_budget_page_shows_totals_and_rows(client):
+    make_logged_in(client)
+    project_id = create_project(client, budget="50000").json()["project"]["id"]
+    log_expense(client, project_id, title="20 bags of cement", amount="1500")
+    log_expense(client, project_id, title="Welding machine hire",
+                amount="800", category="equipment")
+
+    page = client.get(f"/projects/{project_id}").text
+    assert "GH₵50,000" in page                # budget box
+    assert "GH₵2,300.00" in page              # spent-so-far box
+    assert "GH₵47,700.00" in page             # remaining box
+    assert "5% of the budget recorded as spent." in page
+    assert "20 bags of cement" in page
+    assert "Equipment Hire" in page
+    assert "GH₵800.00" in page
+    assert 'id="expenseForm"' in page
+
+
+def test_over_budget_shows_red_state(client):
+    make_logged_in(client)
+    project_id = create_project(client, budget="1000").json()["project"]["id"]
+    log_expense(client, project_id, amount="1250")
+
+    page = client.get(f"/projects/{project_id}").text
+    assert "GH₵-250.00" in page
+    assert "over-budget" in page
+    assert "#b3543a" in page                  # red bar fill
+    # Bar width must be capped at 100%, never wider.
+    assert 'width: 100%' in page
+
+
+def test_project_without_budget_still_sums_spending(client):
+    make_logged_in(client)
+    # Create with no budget figure.
+    client.post("/api/projects", json={
+        "name": "Renovation Without Plan",
+        "project_type": "renovation",
+        "location": "Tema",
+        "package": "silver",
+        "payment_arrangement": "discuss-later",
+    })
+    project_id = client.get("/api/projects").json()["projects"][0]["id"]
+
+    log_expense(client, project_id, amount="350")
+
+    response = client.get(f"/api/projects/{project_id}/expenses").json()
+    assert response["summary"]["total_spent_display"] == "GH₵350.00"
+    assert "remaining" not in response["summary"]
+
+    page = client.get(f"/projects/{project_id}").text
+    assert "no budget recorded yet" in page
+    assert "GH₵350.00" in page

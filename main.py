@@ -11,6 +11,7 @@ Then open http://127.0.0.1:8300 in your browser.
 
 import os
 import secrets
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -166,6 +167,10 @@ def project_detail(project_id: int, request: Request):
         for p in db.get_photos_for_project(project_id)
     ]
 
+    raw_expenses = db.get_expenses_for_project(project_id)
+    expenses = [projects.display_expense(e) for e in raw_expenses]
+    expense_summary = projects.expense_summary(project, raw_expenses)
+
     return templates.TemplateResponse(
         request=request,
         name="project_detail.html",
@@ -173,6 +178,10 @@ def project_detail(project_id: int, request: Request):
             "project": shown,
             "updates": updates,
             "photos": photos,
+            "expenses": expenses,
+            "expense_summary": expense_summary,
+            "categories": projects.EXPENSE_CATEGORIES,
+            "today": date.today().isoformat(),
             "stages": projects.STAGES,
         },
     )

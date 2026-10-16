@@ -7,6 +7,7 @@ their own records.
 """
 
 import uuid
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
@@ -27,6 +28,23 @@ PHOTO_SIGNATURES = (
     (b"\xff\xd8\xff", "jpg"),
     (b"\x89PNG\r\n\x1a\n", "png"),
 )
+
+EXPENSE_CATEGORIES = {
+    "materials": "Materials",
+    "labour": "Labour",
+    "land-permits": "Land & Permits",
+    "equipment": "Equipment Hire",
+    "transport": "Transport",
+    "professional": "Professional Fees",
+    "other": "Other",
+}
+
+# Sanity ceiling so a typo cannot store absurd money values.
+MAX_EXPENSE_GHS = 100_000_000
+
+
+def _money(value: float) -> str:
+    return f"GH₵{value:,.2f}"
 
 PROJECT_TYPES = {
     "construction": "New Construction",
@@ -330,6 +348,129 @@ async def serve_photo(photo_id: int, request: Request):
 
     media_type = "image/png" if photo["extension"] == "png" else "image/jpeg"
     return FileResponse(file_path, media_type=media_type)
+
+
+def display_expense(expense: dict) -> dict:
+    expense = dict(expense)
+    expense["amount_display"] = _money(expense["amount_ghs"])
+    expense["category_display"] = EXPENSE_CATEGORIES.get(
+        expense["category"], expense["category"]
+    )
+    return expense
+
+
+def expense_summary(project: dict, expenses: list[dict]) -> dict:
+    """Running totals for the budget panel, computed from the ledger."""
+    total_spent = round(sum(e["amount_ghs"] for e in expenses), 2)
+    summary = {
+        "total_spent": total_spent,
+        "total_spent_display": _money(total_spent),
+    }
+    if project["budget_ghs"] is not None:
+        remaining = round(project["budget_ghs"] - total_spent, 2)
+        summary["remaining"] = remaining
+        summary["remaining_display"] = _money(remaining)
+        summary["budget_display"] = f"GH₵{project['budget_ghs']:,.0f}"
+        summary["spent_percent"] = round(
+            total_spent / project["budget_ghs"] * 100
+        )
+    return summary
+
+
+@router.post("/projects/{project_id}/expenses")
+async def add_expense(project_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    try:
+        data = await request.json()
+    except Exception:
+        return bad_request("Send the request as JSON data.")
+
+    if not isinstance(data, dict):
+        return bad_request("Send the request as JSON data.")
+
+    errors: dict = {}
+
+    title = str(data.get("title", "")).strip()
+    if not 3 <= len(title) <= 150:
+        errors["title"] = "Describe the expense in 3 to 150 characters."
+
+    # Accept what people actually type: "1,500" or "1500.50".
+    amount_raw = str(data.get("amount_ghs", "") or "").strip().replace(",", "")
+    try:
+        amount = round(float(amount_raw), 2)
+    except ValueError:
+        amount = -1
+    if not 0 < amount <= MAX_EXPENSE_GHS:
+        errors["amount_ghs"] = "Enter the amount in Ghana cedis, a number above 0."
+
+    category = str(data.get("category", "") or "").strip().lower()
+    if category not in EXPENSE_CATEGORIES:
+        errors["category"] = "Choose one of the listed expense categories."
+
+    spent_on = str(data.get("spent_on", "") or "").strip() or date.today().isoformat()
+    try:
+        date.fromisoformat(spent_on)
+    except ValueError:
+        errors["spent_on"] = "Use the date picker (or type YYYY-MM-DD)."
+
+    if errors:
+        return bad_request("Please fix the highlighted fields.", errors)
+
+    db.create_expense(
+        project_id=project_id,
+        entered_by=user["id"],
+        title=title,
+        amount_ghs=amount,
+        category=category,
+        spent_on=spent_on,
+    )
+
+    summary = expense_summary(project, db.get_expenses_for_project(project_id))
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Expense recorded.",
+            "total_spent_display": summary["total_spent_display"],
+            **({"remaining_display": summary["remaining_display"]}
+               if "remaining_display" in summary else {}),
+        },
+        status_code=201,
+    )
+
+
+@router.get("/projects/{project_id}/expenses")
+async def get_expenses(project_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    expenses = [
+        display_expense(e) for e in db.get_expenses_for_project(project_id)
+    ]
+    return {
+        "ok": True,
+        "expenses": expenses,
+        "summary": expense_summary(project, expenses),
+    }
 
 
 @router.get("/projects/{project_id}/updates")

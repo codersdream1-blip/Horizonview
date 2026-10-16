@@ -64,6 +64,20 @@ CREATE TABLE IF NOT EXISTS project_photos (
     caption TEXT,
     created_at TEXT NOT NULL
 );
+
+-- Expense entries (the spending ledger) for a project, in Ghana cedis.
+-- entered_by mirrors project_updates.author_id: the owner records
+-- entries for now; the team interface will take over in a later phase.
+CREATE TABLE IF NOT EXISTS project_expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    entered_by INTEGER NOT NULL REFERENCES users(id),
+    title TEXT NOT NULL,
+    amount_ghs REAL NOT NULL,
+    category TEXT NOT NULL,
+    spent_on TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -216,3 +230,33 @@ def get_photo_by_id(photo_id: int) -> dict | None:
             "SELECT * FROM project_photos WHERE id = ?", (photo_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+def create_expense(
+    project_id: int,
+    entered_by: int,
+    title: str,
+    amount_ghs: float,
+    category: str,
+    spent_on: str,
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO project_expenses (project_id, entered_by, title, "
+            "amount_ghs, category, spent_on, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (project_id, entered_by, title, amount_ghs, category,
+             spent_on, now),
+        )
+        return cursor.lastrowid
+
+
+def get_expenses_for_project(project_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM project_expenses WHERE project_id = ? "
+            "ORDER BY spent_on DESC, id DESC",
+            (project_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
