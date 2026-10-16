@@ -461,6 +461,44 @@
             text-align: center;
         }
 
+        /* REAL SITE-PHOTO STRIP on the dashboard */
+
+        .dash-photo-strip {
+            display: flex;
+            gap: 10px;
+            margin: 8px 0 12px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .dash-photo-thumb {
+            flex: 0 0 128px;
+            min-width: 0;
+        }
+
+        .dash-photo-thumb img {
+            width: 128px;
+            height: 96px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #e7eee8;
+            display: block;
+        }
+
+        .dash-photo-thumb span {
+            display: block;
+            font-size: 11px;
+            color: #718075;
+            margin-top: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .dash-photo-thumb:hover img {
+            outline: 2px solid #43815a;
+        }
+
         .feature-notice {
             background: #fff7db;
             border: 1px solid #ecd88c;
@@ -678,8 +716,12 @@
                     </div>
 
                     <p class="project-note">
-                        Progress updates appear here as your
-                        project team records them.
+                        {% if project.latest_note_title %}
+                        Latest note: <strong>{{ project.latest_note_title }}</strong>
+                        · {{ project.latest_note_date }}
+                        {% else %}
+                        No progress notes yet — open the project to record one.
+                        {% endif %}
                     </p>
                 </article>
                 {% endfor %}
@@ -711,25 +753,38 @@
 
             <section class="card-grid">
 
-                <!-- PHOTOS -->
+                <!-- PHOTOS (real uploads aggregated across projects) -->
                 <article class="dashboard-card">
-                    <div class="media-placeholder">
-                        📷
-                    </div>
-
                     <span class="media-tag">SITE PHOTOS</span>
 
                     <h3>Construction Photos</h3>
 
+                    {% if photo_count %}
+                    <div class="dash-photo-strip">
+                        {% for p in photos %}
+                        <a class="dash-photo-thumb" href="/projects/{{ p.project_id }}">
+                            <img src="{{ p.api_url }}" alt="{{ p.caption or 'Site photo' }}" loading="lazy">
+                            <span>{{ p.project_name }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
                     <p>
-                        View dated photos showing the progress
-                        of your building project.
+                        {{ photo_count }} photo{{ 's' if photo_count != 1 else '' }}
+                        uploaded across your projects.
                     </p>
-
-                    <button class="feature-button"
-                        onclick="showNotice('Site Photos')">
-                        View Site Photos
-                    </button>
+                    <a class="feature-button" href="/projects/{{ photos[0].project_id }}">
+                        View Photos on a Project
+                    </a>
+                    {% else %}
+                    <p>
+                        No site photos yet. Open one of your projects and
+                        upload photos of the work — they appear here too.
+                    </p>
+                    <a class="feature-button secondary"
+                       href="{{ '/projects/new' if not projects else '/projects/' + projects[0].id | string }}">
+                        {{ 'Create a Project First' if not projects else 'Go to a Project' }}
+                    </a>
+                    {% endif %}
                 </article>
 
                 <!-- RECORDED VIDEOS -->
@@ -779,21 +834,44 @@
 
                 </article>
 
-                <!-- BUDGET -->
+                <!-- BUDGET (real totals from the expense ledger) -->
                 <article class="dashboard-card" id="budget">
                     <div class="feature-icon">💰</div>
 
-                    <h3>Budget & Payments</h3>
+                    <h3>Budget &amp; Spending</h3>
 
+                    {% if budget_panel.expense_count %}
                     <p>
-                        Review project costs, payment records,
-                        approved expenses, and your remaining budget.
+                        <strong>Total budget:</strong>
+                        {{ budget_panel.total_budget_display }}<br>
+                        <strong>Spent so far:</strong>
+                        {{ budget_panel.total_spent_display }}<br>
+                        {% if budget_panel.remaining_display %}
+                        <strong>Remaining:</strong>
+                        {{ budget_panel.remaining_display }}<br>
+                        {% endif %}
                     </p>
-
-                    <button class="feature-button secondary"
-                        onclick="showNotice('Budget & Payments')">
-                        View Budget
-                    </button>
+                    <p class="summary-note">
+                        {{ budget_panel.expense_count }} expense
+                        {{ 'entries' if budget_panel.expense_count != 1 else 'entry' }}
+                        recorded in Ghana cedis.
+                        Payment records arrive with the payments phase.
+                    </p>
+                    <a class="feature-button secondary"
+                       href="{{ '/projects/' + projects[0].id | string if projects else '/projects/new' }}">
+                        Open a Project Ledger
+                    </a>
+                    {% else %}
+                    <p>
+                        No expenses recorded yet. Open one of your projects
+                        and log spending in the budget ledger — totals
+                        update instantly.
+                    </p>
+                    <a class="feature-button secondary"
+                       href="{{ '/projects/' + projects[0].id | string if projects else '/projects/new' }}">
+                        {{ 'Go to a Project' if projects else 'Create a Project First' }}
+                    </a>
+                    {% endif %}
                 </article>
 
             </section>
@@ -808,29 +886,24 @@
                 <article class="dashboard-card">
                     <h3>Latest Activity</h3>
 
+                    {% if activities %}
+                    {% for a in activities %}
                     <div class="update-item">
                         <div class="update-dot"></div>
                         <div>
-                            <strong>Project dashboard created</strong>
-                            <small>Website demonstration</small>
+                            <a href="/projects/{{ a.project_id }}" style="display:block;">
+                                <strong>{{ a.kind }}: {{ a.text }}</strong>
+                            </a>
+                            <small>{{ a.project_name }} · {{ a.when }}</small>
                         </div>
                     </div>
-
-                    <div class="update-item">
-                        <div class="update-dot"></div>
-                        <div>
-                            <strong>Construction progress</strong>
-                            <small>Sample information only</small>
-                        </div>
-                    </div>
-
-                    <div class="update-item">
-                        <div class="update-dot"></div>
-                        <div>
-                            <strong>Next site update</strong>
-                            <small>Will appear when submitted by the team</small>
-                        </div>
-                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p>
+                        No activity yet. Progress notes, expenses and
+                        messages you record show up here.
+                    </p>
+                    {% endif %}
                 </article>
 
                 <article class="dashboard-card package-card" id="my-package">
@@ -872,15 +945,31 @@
 
                     <h3>Messages</h3>
 
+                    {% if message_count %}
                     <p>
-                        Communicate with your project manager
-                        and receive important project information.
+                        {{ message_count }} message{{ 's' if message_count != 1 else '' }}
+                        in your project threads.
+                        {% if last_message %}
+                        Latest on <strong>{{ last_message.project_name }}</strong>:
+                        “{{ last_message.body[:90] }}{{ '…' if last_message.body|length > 90 }}”
+                        {% endif %}
                     </p>
-
-                    <button class="feature-button secondary"
-                        onclick="showNotice('Messages')">
-                        Open Messages
-                    </button>
+                    <a class="feature-button secondary"
+                       href="{{ '/projects/' + last_message.project_id | string if last_message else '/projects/' + projects[0].id | string }}">
+                        Open Thread
+                    </a>
+                    {% else %}
+                    <p>
+                        No messages yet. Send the first one from a project
+                        page — replies from your HorizonView project team
+                        appear in the same thread once the team inbox
+                        phase is switched on.
+                    </p>
+                    <a class="feature-button secondary"
+                       href="{{ '/projects/' + projects[0].id | string if projects else '/projects/new' }}">
+                        {{ 'Go to a Project' if projects else 'Create a Project First' }}
+                    </a>
+                    {% endif %}
                 </article>
 
                 <article class="dashboard-card" id="documents">
@@ -902,9 +991,11 @@
             </section>
 
             <p class="demo-note">
-                Your account details and My Projects records are real.
-                The other sections still show prototype panels while we
-                connect photos, videos, budgets and messages.
+                Everything except videos, live-streaming and documents is
+                real: your account, projects, photos, spending records,
+                progress notes and messages all come from your own data.
+                Videos and live-streaming are known-future features — see
+                the notices on those panels.
             </p>
 
         </div>
@@ -914,20 +1005,14 @@
 
 <script>
 
-    // Honest status notes for dashboard features.
-    // Every feature states what it will do and that it is not
-    // connected to live data yet.
+    // Honest status notes for dashboard features that are not built
+    // yet. Photos, budget and messaging now show real data and link
+    // straight to the project pages.
     const featureNotices = {
-        "Site Photos":
-            "Dated site photo galleries will appear here once your project team uploads them. Photo uploads are not connected to the backend yet.",
         "Recorded Videos":
             "Recorded walkthrough, update and inspection videos will play here. Video uploads are not connected to the backend yet.",
         "Platinum Live Video":
             "Live site tours need a real streaming provider and a Platinum package. Live video is planned for a later phase — nothing is being streamed right now.",
-        "Budget & Payments":
-            "Agreed budgets, recorded expenses and confirmed payments will be tracked here in Ghana cedis (GH₵). Budget records are not connected to the backend yet.",
-        "Messages":
-            "Messaging between you and your project team will open here. Messaging is not connected to the backend yet.",
         "Project Documents":
             "Contracts, drawings, receipts and inspection reports will be listed here. Document storage is not connected to the backend yet."
     };

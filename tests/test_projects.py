@@ -3,6 +3,8 @@ Offline tests for project records: creation, listing and access
 control. Every test uses its own temporary database.
 """
 
+import re
+
 import pytest
 from datetime import datetime
 from fastapi.testclient import TestClient
@@ -612,3 +614,76 @@ def test_message_access_control(client):
                       "password": other["password"]})
     assert client.get(f"/api/projects/{project_id}/messages").status_code == 404
     assert send_message(client, project_id).status_code == 404
+
+
+# ---------- Dashboard wired to real data ----------
+
+def _squash(html: str) -> str:
+    """Collapse all whitespace so assertions survive template line breaks."""
+    return re.sub(r"\s+", " ", html)
+
+
+def test_dashboard_shows_real_activity_and_totals(client, tmp_path,
+                                                 monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client, budget="50000").json()["project"]["id"]
+
+    client.post(f"/api/projects/{project_id}/updates", json={
+        "title": "Foundation cast", "body":
+            "Foundation works were completed this week without problems.",
+        "stage": "foundation", "progress_percent": "35",
+    })
+    log_expense(client, project_id, amount="5000")
+    log_expense(client, project_id, title="Welder day rate",
+                amount="750.50", category="labour")
+    send_message(client, project_id, "Please confirm next delivery date.")
+
+    page = _squash(client.get("/dashboard").text)
+
+    # Project card shows the latest note.
+    assert "Latest note:" in page
+    assert "Foundation cast" in page
+
+    # Budget card shows combined totals (5000 + 750.50 = 5750.50).
+    assert "GH₵50,000" in page          # total budget
+    assert "GH₵5,750.50" in page        # total spent
+    assert "GH₵44,249.50" in page       # remaining
+    assert "2 expense entries" in page
+
+    # Activity feed lists the real events.
+    assert "Progress note: Foundation cast — 35%" in page
+    assert "Welder day rate" in page
+    assert "Message: Please confirm next delivery date." in page
+
+    # Messages card counts and previews the thread.
+    assert "1 message in your project threads." in page
+    assert "Please confirm next delivery date." in page
+
+    # The real panels link to the project detail page.
+    assert page.count(f'href="/projects/{project_id}"') >= 3
+
+
+def test_dashboard_photo_thumbnails(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    upload_photo(client, project_id, caption="Roofing steel ready")
+
+    page = _squash(client.get("/dashboard").text)
+    assert 'class="dash-photo-thumb"' in page
+    assert "/api/photos/1" in page
+    assert "1 photo uploaded across your projects." in page
+
+
+def test_dashboard_empty_states_stay_honest(client):
+    make_logged_in(client)
+    create_project(client)              # no notes/photos/expenses yet
+
+    page = _squash(client.get("/dashboard").text)
+    assert "No progress notes yet" in page
+    assert "No site photos yet" in page
+    assert "No expenses recorded yet" in page
+    assert "No activity yet" in page
+    assert "No messages yet" in page
+    assert "Platinum Live Video" in page     # still a labelled future panel

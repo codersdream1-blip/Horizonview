@@ -1,4 +1,4 @@
-"""
+﻿"""
 HorizonView server.
 
 Serves the website pages (through a whitelist) and the account API:
@@ -102,10 +102,97 @@ def dashboard(request: Request):
     name_parts = [p for p in user["full_name"].split() if p]
     initials = "".join(p[0].upper() for p in name_parts[:2]) or "HV"
 
-    user_projects = [
-        projects.display_fields(p)
-        for p in db.get_projects_for_user(user["id"])
-    ]
+    # Everything on this page is computed from the user's own records.
+    # Prototype panels (videos, live video, documents) stay clearly
+    # labelled as not-built-yet; panels we have replaced show real data.
+    raw_projects = db.get_projects_for_user(user["id"])
+    user_projects = [projects.display_fields(p) for p in raw_projects]
+
+    all_photos: list[dict] = []
+    all_expenses: list[dict] = []
+    all_messages: list[dict] = []
+    activities: list[dict] = []
+
+    for raw, shown in zip(raw_projects, user_projects):
+        shown["id"] = raw["id"]
+
+        latest_notes = [
+            projects.display_update(u, owner_id=user["id"])
+            for u in db.get_updates_for_project(raw["id"])[:1]
+        ]
+        if latest_notes:
+            note = latest_notes[0]
+            shown["latest_note_title"] = note["title"]
+            shown["latest_note_date"] = note["created_display"]
+            shown["latest_note_stage"] = note["stage_display"]
+        else:
+            shown["latest_note_title"] = None
+
+        for photo in db.get_photos_for_project(raw["id"]):
+            item = projects.display_photo(photo)
+            item["project_name"] = shown["name"]
+            item["project_id"] = raw["id"]
+            all_photos.append(item)
+
+        for expense in db.get_expenses_for_project(raw["id"]):
+            item = projects.display_expense(expense)
+            item["project_name"] = shown["name"]
+            item["project_id"] = raw["id"]
+            all_expenses.append(item)
+            activities.append({
+                "kind": "Expense logged",
+                "text": f'{item["amount_display"]} — {item["title"]}',
+                "when": item["spent_on"],
+                "project_name": shown["name"],
+                "project_id": raw["id"],
+            })
+
+        for message in db.get_messages_for_project(raw["id"])[-3:]:
+            item = projects.display_message(message, owner_id=user["id"])
+            item["project_name"] = shown["name"]
+            item["project_id"] = raw["id"]
+            all_messages.append(item)
+            activities.append({
+                "kind": "Message",
+                "text": item["body"][:80] + ("…" if len(item["body"]) > 80 else ""),
+                "when": item["time_display"],
+                "project_name": shown["name"],
+                "project_id": raw["id"],
+            })
+
+        for note in db.get_updates_for_project(raw["id"]):
+            shown_note = projects.display_update(note, owner_id=user["id"])
+            activities.append({
+                "kind": "Progress note",
+                "text": f'{shown_note["title"]} — {shown_note["progress_percent"]}%',
+                "when": shown_note["created_display"],
+                "project_name": shown["name"],
+                "project_id": raw["id"],
+            })
+
+    all_photos.sort(key=lambda p: p["created_at"], reverse=True)
+    activities.sort(key=lambda a: a["when"], reverse=True)
+
+    total_budget = round(sum(
+        p["budget_ghs"] for p in raw_projects
+        if p["budget_ghs"] is not None
+    ), 2) if raw_projects else 0.0
+    total_spent = round(sum(e["amount_ghs"] for e in all_expenses), 2)
+
+    budget_panel = {
+        "photo_count": len(all_photos),
+        "expense_count": len(all_expenses),
+        "message_count": len(all_messages),
+        "total_budget_display": f"GH₵{total_budget:,.0f}",
+        "total_spent_display": projects.format_money(total_spent),
+    }
+    if total_budget > 0:
+        budget_panel["remaining_display"] = projects.format_money(
+            round(total_budget - total_spent, 2)
+        )
+        budget_panel["spent_percent"] = round(
+            total_spent / total_budget * 100
+        )
 
     return templates.TemplateResponse(
         request=request,
@@ -115,6 +202,12 @@ def dashboard(request: Request):
             "email": user["email"],
             "initials": initials,
             "projects": user_projects,
+            "photos": all_photos[:4],
+            "photo_count": len(all_photos),
+            "activities": activities[:5],
+            "message_count": len(all_messages),
+            "last_message": all_messages[-1] if all_messages else None,
+            "budget_panel": budget_panel,
         },
     )
 

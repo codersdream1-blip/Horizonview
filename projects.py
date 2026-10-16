@@ -46,6 +46,10 @@ MAX_EXPENSE_GHS = 100_000_000
 def _money(value: float) -> str:
     return f"GH₵{value:,.2f}"
 
+
+# Public alias for use outside this module (dashboards, etc.).
+format_money = _money
+
 PROJECT_TYPES = {
     "construction": "New Construction",
     "renovation": "Renovation",
