@@ -1,0 +1,355 @@
+/* =================================
+START PROJECT PAGE
+================================= */
+
+/* PAGE HEADER */
+
+.project-header {
+padding: 100px 7%;
+
+background: #173d2b;
+
+color: white;
+
+}
+
+.project-header-content {
+max-width: 800px;
+}
+
+.project-header h1 {
+font-size: clamp(48px, 7vw, 78px);
+
+line-height: 1.05;
+
+letter-spacing: -3px;
+
+margin-bottom: 25px;
+
+}
+
+.project-header p {
+max-width: 650px;
+
+color: #dce5df;
+
+font-size: 18px;
+
+}
+
+
+
+
+/* FORM CONTAINER */
+
+.project-container {
+max-width: 1100px;
+
+margin: auto;
+
+padding: 100px 30px;
+
+}
+
+.form-introduction {
+max-width: 700px;
+
+margin-bottom: 70px;
+
+}
+
+.form-introduction h2 {
+font-size: 48px;
+
+line-height: 1.1;
+
+margin-bottom: 20px;
+
+letter-spacing: -2px;
+
+}
+
+.form-introduction > p {
+color: #667069;
+
+font-size: 17px;
+
+}
+
+
+
+
+/* FORM */
+
+.project-form {
+width: 100%;
+}
+
+.form-section {
+padding: 45px 0;
+
+border-top: 1px solid #d5d6ce;
+
+}
+
+.form-section h3 {
+font-size: 23px;
+
+margin-bottom: 30px;
+
+}
+
+.form-grid {
+display: grid;
+
+grid-template-columns: 1fr 1fr;
+
+gap: 25px;
+
+}
+
+
+
+
+/* FORM GROUP */
+
+.form-group {
+display: flex;
+
+flex-direction: column;
+
+gap: 9px;
+
+}
+
+.form-group label {
+font-size: 14px;
+
+font-weight: 600;
+
+color: #303a34;
+
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+
+width: 100%;
+
+padding: 15px;
+
+border: 1px solid #c8cbc4;
+
+border-radius: 4px;
+
+background: white;
+
+font-family: inherit;
+
+font-size: 15px;
+
+color: #17231d;
+
+outline: none;
+
+transition: 0.2s;
+
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+
+border-color: #173d2b;
+
+box-shadow: 0 0 0 2px rgba(23, 61, 43, 0.08);
+
+}
+
+.form-group textarea {
+
+resize: vertical;
+
+min-height: 160px;
+
+}
+
+
+
+
+/* PROJECT DESCRIPTION */
+
+.upload-description {
+
+color: #667069;
+
+margin-bottom: 25px;
+
+max-width: 700px;
+
+}
+
+
+
+
+/* FILE UPLOAD */
+
+.upload-box {
+
+border: 2px dashed #c8cbc4;
+
+background: #fafaf7;
+
+border-radius: 5px;
+
+padding: 45px;
+
+text-align: center;
+
+transition: 0.2s;
+
+}
+
+.upload-box {
+
+border-color: #173d2b;
+
+}
+
+.upload-box input {
+
+display: none;
+
+}
+
+.upload-box label {
+
+cursor: pointer;
+
+display: flex;
+
+flex-direction: column;
+
+gap: 8px;
+
+}
+
+.upload-box strong {
+
+font-size: 17px;
+
+color: #173d2b;
+
+}
+
+.upload-box span {
+
+font-size: 14px;
+
+color: #747b76;
+
+}
+
+
+
+
+/* SUBMIT */
+
+.form-submit {
+
+padding-top: 45px;
+
+border-top: 1px solid #d5d6ce;
+
+}
+
+.submit-btn {
+
+border: none;
+
+padding: 16px 28px;
+
+background: #173d2b;
+
+color: white;
+
+border-radius: 4px;
+
+font-family: inherit;
+
+font-size: 15px;
+
+cursor: pointer;
+
+transition: 0.2s;
+
+}
+
+.submit-btn {
+
+background: #24563e;
+
+}
+
+.form-submit p {
+
+margin-top: 15px;
+
+font-size: 12px;
+
+color: #7a807b;
+
+}
+
+
+
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+
+.project-header {
+
+    padding: 75px 5%;
+
+}
+
+
+.project-header h1 {
+
+    font-size: 48px;
+
+    letter-spacing: -2px;
+
+}
+
+
+.project-container {
+
+    padding: 70px 5%;
+
+}
+
+
+.form-grid {
+
+    grid-template-columns: 1fr;
+
+}
+
+
+.form-introduction h2 {
+
+    font-size: 40px;
+
+}
+
+
+.upload-box {
+
+    padding: 30px 20px;
+
+}
+
+}

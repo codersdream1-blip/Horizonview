@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | HorizonView</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .register-section {
+            min-height: 80vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 20px;
+            background: #f7f6f1;
+        }
+
+        .register-card {
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 35px rgba(0, 0, 0, 0.08);
+        }
+
+        .register-card h1 {
+            color: #173d2b;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .register-intro {
+            color: #666;
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+
+        .register-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #173d2b;
+        }
+
+        .register-form input {
+            width: 100%;
+            padding: 13px;
+            margin-bottom: 20px;
+            border: 1px solid #d8ded8;
+            border-radius: 7px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        .register-form input:focus {
+            outline: 2px solid #a8c5ae;
+            border-color: #173d2b;
+        }
+
+        .register-submit {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 7px;
+            background: #173d2b;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .register-submit:hover {
+            background: #24583d;
+        }
+
+        .register-links {
+            text-align: center;
+            margin-top: 24px;
+            color: #666;
+        }
+
+        .register-links a {
+            color: #173d2b;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .register-message {
+            margin-top: 15px;
+            color: #9b3a24;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 500px) {
+            .register-card {
+                padding: 28px 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="index.html" class="logo">HorizonView</a>
+
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="start-project.html">Start a Project</a>
+            <a href="login.html" class="login-btn">Login</a>
+        </nav>
+    </header>
+
+    <main class="register-section">
+        <section class="register-card">
+            <h1>Create your account</h1>
+
+            <p class="register-intro">
+                Join HorizonView to stay connected with your construction
+                project and follow its progress.
+            </p>
+
+            <form class="register-form" id="registerForm">
+                <label for="fullName">Full Name</label>
+                <input
+                    type="text"
+                    id="fullName"
+                    name="fullName"
+                    placeholder="Enter your full name"
+                    autocomplete="name"
+                    required
+                >
+
+                <label for="email">Email Address</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    required
+                >
+
+                <label for="phone">Phone / WhatsApp</label>
+                <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    placeholder="Enter your phone number"
+                    autocomplete="tel"
+                    required
+                >
+
+                <label for="password">Create Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="At least 8 characters"
+                    autocomplete="new-password"
+                    minlength="8"
+                    required
+                >
+
+                <label for="confirmPassword">Confirm Password</label>
+                <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    placeholder="Enter your password again"
+                    autocomplete="new-password"
+                    minlength="8"
+                    required
+                >
+
+                <button type="submit" class="register-submit">
+                    Create Account
+                </button>
+
+                <p id="registerMessage" class="register-message" role="status"></p>
+            </form>
+
+            <div class="register-links">
+                Already have an account?
+                <a href="login.html">Log in</a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const registerForm = document.getElementById("registerForm");
+
+        registerForm.addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+            const message = document.getElementById("registerMessage");
+
+            if (password !== confirmPassword) {
+                message.textContent = "Your passwords do not match. Please try again.";
+                return;
+            }
+
+            message.textContent =
+                "Your form looks good! Account creation will work after we connect the secure backend.";
+        });
+    </script>
+
+</body>
+</html>

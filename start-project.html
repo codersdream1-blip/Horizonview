@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Start a Project | HorizonView</title>
+
+<link rel="stylesheet" href="css/style.css">
+
+<link rel="stylesheet" href="css/project.css">
+
+</head>
+
+<body>
+
+<!-- NAVIGATION -->
+
+<header class="navbar">
+
+    <div class="logo">
+        Horizon<span>View</span>
+    </div>
+
+
+    <nav>
+
+        <a href="index.html">
+            Home
+        </a>
+
+        <a href="index.html#services">
+            Services
+        </a>
+
+        <a href="index.html#projects">
+            Projects
+        </a>
+
+        <a href="index.html#how-it-works">
+            How It Works
+        </a>
+
+        <a href="index.html#contact">
+            Contact
+        </a>
+
+    </nav>
+
+
+    <div class="nav-buttons">
+
+        <a href="login.html" class="login-btn">
+     Login
+       </a>
+
+    </div>
+
+</header>
+
+
+
+<!-- PAGE HEADER -->
+
+<section class="project-header">
+
+    <div class="project-header-content">
+
+        <p class="section-label">
+            START A PROJECT
+        </p>
+
+        <h1>
+            Tell us about<br>
+            your project.
+        </h1>
+
+        <p>
+            Whether you're building, renovating or
+            developing property in Ghana, give us
+            some basic information about your project.
+        </p>
+
+    </div>
+
+</section>
+
+
+
+<!-- PROJECT FORM -->
+
+<main class="project-container">
+
+
+    <div class="form-introduction">
+
+        <p class="section-label">
+            PROJECT INFORMATION
+        </p>
+
+        <h2>
+            Let's get started.
+        </h2>
+
+        <p>
+            Complete the form below. A HorizonView
+            representative can review your request
+            and contact you about the next steps.
+        </p>
+
+    </div>
+
+
+
+    <form class="project-form">
+
+
+        <!-- PERSONAL INFORMATION -->
+
+        <div class="form-section">
+
+            <h3>
+                01. Your Information
+            </h3>
+
+
+            <div class="form-grid">
+
+
+                <div class="form-group">
+
+                    <label for="full-name">
+                        Full Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="full-name"
+                        name="full_name"
+                        placeholder="Enter your full name"
+                        required
+                    >
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="email">
+                        Email Address
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="you@example.com"
+                        required
+                    >
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="phone">
+                        Phone / WhatsApp
+                    </label>
+
+                    <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        placeholder="+233 XX XXX XXXX"
+                        required
+                    >
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="country">
+                        Where do you currently live?
+                    </label>
+
+                    <input
+                        type="text"
+                        id="country"
+                        name="country"
+                        placeholder="Example: United Kingdom"
+                    >
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+
+
+        <!-- PROJECT INFORMATION -->
+
+        <div class="form-section">
+
+            <h3>
+                02. Your Project
+            </h3>
+
+
+            <div class="form-grid">
+
+
+                <div class="form-group">
+
+                    <label for="project-type">
+                        Project Type
+                    </label>
+
+                    <select
+                        id="project-type"
+                        name="project_type"
+                        required
+                    >
+
+                        <option value="">
+                            Select project type
+                        </option>
+
+                        <option value="construction">
+                            New Construction
+                        </option>
+
+                        <option value="renovation">
+                            Renovation
+                        </option>
+
+                        <option value="property-development">
+                            Property Development
+                        </option>
+
+                        <option value="site-monitoring">
+                            Site Monitoring
+                        </option>
+
+                        <option value="other">
+                            Other
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="property-type">
+                        Property Type
+                    </label>
+
+                    <select
+                        id="property-type"
+                        name="property_type"
+                    >
+
+                        <option value="">
+                            Select property type
+                        </option>
+
+                        <option value="house">
+                            House
+                        </option>
+
+                        <option value="apartment">
+                            Apartment
+                        </option>
+
+                        <option value="commercial">
+                            Commercial Property
+                        </option>
+
+                        <option value="land">
+                            Land Development
+                        </option>
+
+                        <option value="other">
+                            Other
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="location">
+                        Project Location in Ghana
+                    </label>
+
+                    <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        placeholder="Example: East Legon, Accra"
+                        required
+                    >
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <label for="budget">
+                        Estimated Budget
+                    </label>
+
+                    <select
+                        id="budget"
+                        name="budget"
+                    >
+
+                        <option value="">
+                            Select estimated budget
+                        </option>
+
+                        <option value="under-100k">
+                            Under GH₵100,000
+                        </option>
+
+                        <option value="100k-250k">
+                            GH₵100,000 – GH₵250,000
+                        </option>
+
+                        <option value="250k-500k">
+                            GH₵250,000 – GH₵500,000
+                        </option>
+
+                        <option value="500k-1m">
+                            GH₵500,000 – GH₵1,000,000
+                        </option>
+
+                        <option value="over-1m">
+                            Over GH₵1,000,000
+                        </option>
+
+                        <option value="not-sure">
+                            I'm not sure yet
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+
+
+        <!-- PROJECT DETAILS -->
+
+        <div class="form-section">
+
+            <h3>
+                03. Project Details
+            </h3>
+
+
+            <div class="form-group">
+
+                <label for="description">
+                    Tell us about your project
+                </label>
+
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="7"
+                    placeholder="Describe what you want to build, renovate or develop..."
+                ></textarea>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="start-date">
+                    Desired Start Date
+                </label>
+
+                <input
+                    type="date"
+                    id="start-date"
+                    name="start_date"
+                >
+
+            </div>
+
+        </div>
+
+
+
+        <!-- FILE UPLOAD -->
+
+        <div class="form-section">
+
+            <h3>
+                04. Project Files
+            </h3>
+
+
+            <p class="upload-description">
+
+                If you already have photos, plans,
+                documents or other information about
+                the project, you can upload them here.
+
+            </p>
+
+
+            <div class="upload-box">
+
+                <input
+                    type="file"
+                    id="project-files"
+                    name="project_files"
+                    multiple
+                >
+
+                <label for="project-files">
+
+                    <strong>
+                        Upload project files
+                    </strong>
+
+                    <span>
+                        Photos, drawings, plans or documents
+                    </span>
+
+                </label>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- SUBMIT -->
+
+        <div class="form-submit">
+
+            <button
+                type="submit"
+                class="submit-btn"
+            >
+                Submit Project Request
+            </button>
+
+
+            <p>
+                By submitting this form,
+                you agree to be contacted about
+                your project request.
+            </p>
+
+        </div>
+
+
+    </form>
+
+</main>
+
+
+
+<!-- FOOTER -->
+
+<footer>
+
+    <div class="logo">
+        Horizon<span>View</span>
+    </div>
+
+    <p>
+        Construction coordination & project monitoring.
+    </p>
+
+    <p>
+        © 2026 HorizonView. All rights reserved.
+    </p>
+
+</footer>
+
+</body>
+
+</html>

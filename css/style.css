@@ -1,0 +1,606 @@
+/* ================================
+HORIZONVIEW - MAIN STYLES
+================================ */
+
+{
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+
+html {
+scroll-behavior: smooth;
+}
+
+body {
+font-family: Arial, Helvetica, sans-serif;
+background: #f7f6f1;
+color: #17231d;
+line-height: 1.6;
+}
+
+a {
+text-decoration: none;
+color: inherit;
+}
+
+/* ================================
+NAVIGATION
+================================ */
+
+.navbar {
+width: 100%;
+padding: 22px 7%;
+
+display: flex;
+align-items: center;
+justify-content: space-between;
+
+background: #f7f6f1;
+
+border-bottom: 1px solid #dddcd5;
+
+position: relative;
+z-index: 10;
+
+}
+
+/* LOGO */
+
+.logo {
+font-size: 25px;
+font-weight: 700;
+letter-spacing: -1px;
+}
+
+.logo span {
+font-weight: 400;
+}
+
+/* NAV LINKS */
+
+.navbar nav {
+display: flex;
+gap: 28px;
+}
+
+.navbar nav a {
+font-size: 14px;
+color: #3e4942;
+
+transition: 0.2s;
+
+}
+
+.navbar nav a {
+color: #173d2b;
+}
+
+/* NAV BUTTONS */
+
+.nav-buttons {
+display: flex;
+align-items: center;
+gap: 15px;
+}
+
+.login-btn {
+font-size: 14px;
+}
+
+/* ================================
+BUTTONS
+================================ */
+
+.primary-btn {
+display: inline-block;
+
+padding: 13px 22px;
+
+background: #173d2b;
+color: white;
+
+border-radius: 4px;
+
+font-size: 14px;
+
+transition: 0.2s;
+
+}
+
+.primary-btn {
+background: #24563e;
+}
+
+.secondary-btn {
+display: inline-block;
+
+padding: 12px 21px;
+
+border: 1px solid white;
+
+color: white;
+
+border-radius: 4px;
+
+font-size: 14px;
+
+transition: 0.2s;
+
+}
+
+.secondary-btn {
+background: white;
+color: #173d2b;
+}
+
+/* ================================
+HERO SECTION
+================================ */
+
+.hero {
+min-height: 720px;
+
+padding: 120px 7%;
+
+display: flex;
+align-items: center;
+
+background:
+    linear-gradient(
+        rgba(20, 48, 35, 0.82),
+        rgba(20, 48, 35, 0.82)
+    ),
+    url("../images/hero.jpg");
+
+background-size: cover;
+background-position: center;
+
+color: white;
+
+}
+
+.hero-content {
+max-width: 760px;
+}
+
+.hero-label {
+font-size: 12px;
+
+letter-spacing: 2px;
+
+font-weight: bold;
+
+margin-bottom: 20px;
+
+}
+
+.hero h1 {
+font-size: clamp(48px, 7vw, 86px);
+
+line-height: 1.03;
+
+letter-spacing: -4px;
+
+margin-bottom: 30px;
+
+}
+
+.hero h1 span {
+font-weight: 400;
+}
+
+.hero-text {
+max-width: 650px;
+
+font-size: 19px;
+
+color: #e5ebe7;
+
+margin-bottom: 35px;
+
+}
+
+.hero-buttons {
+display: flex;
+
+gap: 15px;
+
+flex-wrap: wrap;
+
+}
+
+/* ================================
+GENERAL SECTIONS
+================================ */
+
+.section {
+padding: 110px 7%;
+}
+
+.section-heading {
+max-width: 650px;
+
+margin-bottom: 60px;
+
+}
+
+.section-label {
+font-size: 12px;
+
+letter-spacing: 2px;
+
+font-weight: bold;
+
+margin-bottom: 20px;
+
+}
+
+.section-heading h2 {
+font-size: 52px;
+
+line-height: 1.08;
+
+letter-spacing: -2px;
+
+margin-bottom: 20px;
+
+}
+
+.section-heading p {
+color: #667069;
+}
+
+/* ================================
+HOW IT WORKS
+================================ */
+
+.steps {
+display: grid;
+
+grid-template-columns: repeat(3, 1fr);
+
+gap: 30px;
+
+}
+
+.step {
+border-top: 1px solid #bbbcb5;
+
+padding-top: 25px;
+
+}
+
+.step-number {
+font-size: 13px;
+
+font-weight: bold;
+
+margin-bottom: 30px;
+
+}
+
+.step h3 {
+font-size: 25px;
+
+margin-bottom: 12px;
+
+}
+
+.step p {
+color: #667069;
+}
+
+/* ================================
+SERVICES
+================================ */
+
+.services-section {
+padding: 110px 7%;
+
+background: #e7e8df;
+
+}
+
+.services-grid {
+display: grid;
+
+grid-template-columns: repeat(2, 1fr);
+
+gap: 20px;
+
+}
+
+.service-card {
+background: #f7f6f1;
+
+padding: 40px;
+
+min-height: 220px;
+
+transition: 0.2s;
+
+}
+
+.service-card {
+transform: translateY(-4px);
+}
+
+.service-card h3 {
+font-size: 25px;
+
+margin-bottom: 15px;
+
+}
+
+.service-card p {
+color: #667069;
+}
+
+/* ================================
+PROJECTS
+================================ */
+
+.projects-grid {
+display: grid;
+
+grid-template-columns: repeat(3, 1fr);
+
+gap: 25px;
+
+}
+
+.project-card {
+background: white;
+
+overflow: hidden;
+
+}
+
+.project-image {
+height: 300px;
+
+background: #d2d4cc;
+
+display: flex;
+
+align-items: center;
+
+justify-content: center;
+
+color: #6d756e;
+
+font-size: 13px;
+
+}
+
+.project-info {
+padding: 25px;
+}
+
+.project-info p {
+font-size: 11px;
+
+letter-spacing: 1.5px;
+
+font-weight: bold;
+
+margin-bottom: 8px;
+
+}
+
+.project-info h3 {
+font-size: 22px;
+
+margin-bottom: 8px;
+
+}
+
+.project-info span {
+color: #777;
+
+font-size: 14px;
+
+}
+
+/* ================================
+CALL TO ACTION
+================================ */
+
+.cta-section {
+padding: 120px 7%;
+
+background: #173d2b;
+
+color: white;
+
+}
+
+.cta-section h2 {
+font-size: 62px;
+
+line-height: 1.05;
+
+letter-spacing: -2px;
+
+margin-bottom: 20px;
+
+}
+
+.cta-section p {
+color: #d7e0da;
+
+margin-bottom: 30px;
+
+}
+
+/* ================================
+CONTACT
+================================ */
+
+.contact-section {
+padding: 110px 7%;
+
+display: grid;
+
+grid-template-columns: 1fr 1fr;
+
+gap: 60px;
+
+}
+
+.contact-section h2 {
+font-size: 52px;
+
+line-height: 1.08;
+
+}
+
+.contact-info {
+padding-top: 35px;
+
+color: #59625c;
+
+}
+
+.contact-info p {
+margin-bottom: 20px;
+}
+
+/* ================================
+FOOTER
+================================ */
+
+footer {
+padding: 45px 7%;
+
+background: #101b15;
+
+color: white;
+
+display: flex;
+
+justify-content: space-between;
+
+align-items: center;
+
+gap: 20px;
+
+}
+
+footer p {
+font-size: 13px;
+
+color: #aab4ad;
+
+}
+
+/* ================================
+TABLET
+================================ */
+
+@media (max-width: 900px) {
+
+.navbar {
+    flex-wrap: wrap;
+
+    gap: 20px;
+}
+
+
+.navbar nav {
+    order: 3;
+
+    width: 100%;
+
+    justify-content: center;
+
+    flex-wrap: wrap;
+}
+
+
+.steps,
+.projects-grid {
+    grid-template-columns: 1fr;
+}
+
+
+.services-grid {
+    grid-template-columns: 1fr;
+}
+
+
+.contact-section {
+    grid-template-columns: 1fr;
+}
+
+
+footer {
+    flex-direction: column;
+
+    align-items: flex-start;
+}
+
+}
+
+/* ================================
+MOBILE
+================================ */
+
+@media (max-width: 600px) {
+
+.navbar {
+    padding: 18px 5%;
+}
+
+
+.nav-buttons {
+    display: none;
+}
+
+
+.hero {
+    min-height: 650px;
+
+    padding: 80px 5%;
+}
+
+
+.hero h1 {
+    font-size: 48px;
+
+    letter-spacing: -2px;
+}
+
+
+.hero-text {
+    font-size: 17px;
+}
+
+
+.section,
+.services-section,
+.cta-section,
+.contact-section {
+    padding: 75px 5%;
+}
+
+
+.section-heading h2,
+.contact-section h2 {
+    font-size: 40px;
+}
+
+
+.cta-section h2 {
+    font-size: 45px;
+}
+
+
+.hero-buttons {
+    flex-direction: column;
+
+    align-items: flex-start;
+}
+
+}

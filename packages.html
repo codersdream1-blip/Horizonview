@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packages | HorizonView</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --green: #14532d;
+            --dark-green: #103b25;
+            --light-green: #eaf5ed;
+            --gold: #d4a72c;
+            --text: #1f2937;
+            --muted: #64748b;
+            --white: #ffffff;
+            --background: #f7f9f7;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--text);
+            background: var(--background);
+            line-height: 1.6;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 17px 6%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            color: var(--green);
+            font-size: 25px;
+            font-weight: 800;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        nav a:hover {
+            color: var(--green);
+        }
+
+        .nav-button {
+            background: var(--green);
+            color: white;
+            padding: 11px 17px;
+            border-radius: 7px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #103b25, #237345);
+            color: white;
+            padding: 75px 6% 80px;
+            text-align: center;
+        }
+
+        .eyebrow {
+            color: #bce8c8;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            font-size: clamp(32px, 5vw, 50px);
+            line-height: 1.2;
+            margin: 18px auto;
+            max-width: 800px;
+        }
+
+        .hero p {
+            max-width: 680px;
+            margin: 0 auto 25px;
+            color: #e1f0e5;
+            font-size: 17px;
+        }
+
+        .button {
+            display: inline-block;
+            border: none;
+            border-radius: 7px;
+            padding: 13px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+        }
+
+        .button-light {
+            background: white;
+            color: var(--green);
+        }
+
+        .button-green {
+            background: var(--green);
+            color: white;
+        }
+
+        .button-outline {
+            border: 1px solid var(--green);
+            color: var(--green);
+            background: white;
+        }
+
+        .section {
+            padding: 65px 6%;
+        }
+
+        .section-heading {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 35px;
+        }
+
+        .section-heading h2 {
+            color: var(--dark-green);
+            font-size: clamp(27px, 4vw, 36px);
+            margin-bottom: 10px;
+        }
+
+        .section-heading p {
+            color: var(--muted);
+        }
+
+        .package-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 23px;
+            max-width: 1150px;
+            margin: 0 auto;
+            align-items: stretch;
+        }
+
+        .package-card {
+            position: relative;
+            background: white;
+            border: 1px solid #e2e8e3;
+            border-radius: 14px;
+            padding: 30px 25px;
+            box-shadow: 0 5px 22px rgba(15, 45, 25, 0.04);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .package-card.featured {
+            border: 2px solid var(--green);
+            box-shadow: 0 10px 30px rgba(20, 83, 45, 0.12);
+        }
+
+        .popular {
+            display: inline-block;
+            align-self: flex-start;
+            background: var(--light-green);
+            color: var(--green);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .package-card h3 {
+            color: var(--dark-green);
+            font-size: 25px;
+            margin-bottom: 7px;
+        }
+
+        .package-description {
+            color: var(--muted);
+            font-size: 14px;
+            min-height: 48px;
+        }
+
+        .price {
+            font-size: 25px;
+            font-weight: 800;
+            margin: 22px 0 4px;
+            color: var(--green);
+        }
+
+        .price-note {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+
+        .package-card ul {
+            list-style: none;
+            margin: 8px 0 25px;
+            flex: 1;
+        }
+
+        .package-card li {
+            padding: 9px 0;
+            border-bottom: 1px solid #edf0ed;
+            font-size: 14px;
+        }
+
+        .package-card li::before {
+            content: "✓";
+            color: var(--green);
+            font-weight: 800;
+            margin-right: 9px;
+        }
+
+        .package-card .button {
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .payment-note {
+            text-align: center;
+            max-width: 800px;
+            margin: 30px auto 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .funding-section {
+            background: var(--light-green);
+        }
+
+        .funding-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            max-width: 1050px;
+            margin: 0 auto;
+        }
+
+        .funding-card {
+            background: white;
+            border-radius: 14px;
+            padding: 30px;
+            border: 1px solid #dce9de;
+        }
+
+        .funding-card h3 {
+            color: var(--dark-green);
+            font-size: 21px;
+            margin-bottom: 10px;
+        }
+
+        .funding-card p {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 17px;
+        }
+
+        .funding-card ul {
+            padding-left: 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .funding-card li {
+            margin: 8px 0;
+        }
+
+        .contact-section {
+            text-align: center;
+            padding: 60px 6%;
+            background: white;
+        }
+
+        .contact-section h2 {
+            color: var(--dark-green);
+            font-size: 30px;
+            margin-bottom: 12px;
+        }
+
+        .contact-section p {
+            max-width: 650px;
+            color: var(--muted);
+            margin: 0 auto 23px;
+        }
+
+        .contact-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .notice {
+            display: none;
+            background: #fff7db;
+            border: 1px solid #ecd88c;
+            color: #674f08;
+            border-radius: 8px;
+            padding: 13px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+
+        footer {
+            background: #102f1e;
+            color: #d9e7dc;
+            padding: 25px 6%;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        @media (max-width: 900px) {
+            .package-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .funding-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 16px 5%;
+            }
+
+            nav {
+                gap: 14px;
+            }
+
+            .hero {
+                padding: 55px 5%;
+            }
+
+            .section {
+                padding: 45px 5%;
+            }
+
+            .package-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .package-description {
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <a href="index.html" class="logo">HorizonView</a>
+
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="start-project.html">Start a Project</a>
+        <a href="packages.html">Packages</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="login.html" class="nav-button">Login</a>
+    </nav>
+</header>
+
+<section class="hero">
+    <div class="eyebrow">Your project. Your pace.</div>
+
+    <h1>Build in Ghana with confidence.</h1>
+
+    <p>
+        Choose the level of project monitoring that works for you.
+        Create your account for free, pay for a package when you are ready,
+        and fund your construction in manageable stages.
+    </p>
+
+    <a href="register.html" class="button button-light">
+        Create a Free Account
+    </a>
+</section>
+
+<section class="section">
+    <div class="section-heading">
+        <h2>Choose Your HorizonView Package</h2>
+        <p>
+            Compare our proposed service levels. You can create an account
+            first and decide on your package later.
+        </p>
+    </div>
+
+    <div class="package-grid">
+
+        <article class="package-card">
+            <h3>Silver</h3>
+            <p class="package-description">
+                Essential updates to help you stay informed about your project.
+            </p>
+
+            <div class="price">Price to be confirmed</div>
+            <div class="price-note">Package fee — confirmed before purchase</div>
+
+            <ul>
+                <li>Project dashboard access</li>
+                <li>Progress photos</li>
+                <li>Monthly progress reports</li>
+                <li>Construction milestone updates</li>
+                <li>Project communication records</li>
+            </ul>
+
+            <button class="button button-outline"
+                    onclick="choosePackage('Silver')">
+                Choose Silver
+            </button>
+        </article>
+
+        <article class="package-card featured">
+            <div class="popular">More Monitoring</div>
+
+            <h3>Gold</h3>
+            <p class="package-description">
+                More visibility into site activity, costs and progress.
+            </p>
+
+            <div class="price">Price to be confirmed</div>
+            <div class="price-note">Package fee — confirmed before purchase</div>
+
+            <ul>
+                <li>Everything in Silver</li>
+                <li>Recorded site videos</li>
+                <li>Budget and expense tracking</li>
+                <li>Detailed milestone reports</li>
+                <li>Payment and receipt records</li>
+            </ul>
+
+            <button class="button button-green"
+                    onclick="choosePackage('Gold')">
+                Choose Gold
+            </button>
+        </article>
+
+        <article class="package-card">
+            <h3>Platinum</h3>
+            <p class="package-description">
+                A premium monitoring experience for customers who want more.
+            </p>
+
+            <div class="price">Price to be confirmed</div>
+            <div class="price-note">Package fee — confirmed before purchase</div>
+
+            <ul>
+                <li>Everything in Gold</li>
+                <li>Live video site tours</li>
+                <li>Priority project communication</li>
+                <li>Additional inspection reports</li>
+                <li>Drone footage where available and permitted</li>
+            </ul>
+
+            <button class="button button-outline"
+                    onclick="choosePackage('Platinum')">
+                Choose Platinum
+            </button>
+        </article>
+
+    </div>
+
+    <p class="payment-note">
+        Package prices and final service terms have not been set yet.
+        You can register now without purchasing a package.
+        Live site video tours are reserved for Platinum.
+    </p>
+</section>
+
+<section class="section funding-section">
+    <div class="section-heading">
+        <h2>Build at a Pace That Works for You</h2>
+        <p>
+            You do not have to fund your entire construction project at once.
+            HorizonView can help you plan manageable stages based on your
+            budget and the work required.
+        </p>
+    </div>
+
+    <div class="funding-grid">
+
+         <article class="funding-card">
+            <h3>Option 1: Pay All at Once</h3>
+
+            <p>
+                If you already have the full agreed construction budget,
+                you can arrange to fund your project upfront.
+            </p>
+
+            <ul>
+                <li>Agree on the total project budget and scope of work.</li>
+                <li>Review the construction plan and payment terms.</li>
+                <li>Keep records of payments, expenses and receipts.</li>
+                <li>Track construction progress through your dashboard.</li>
+            </ul>
+
+            <button class="button button-green"
+                    onclick="chooseFunding('Full upfront funding')">
+                Explore Full Payment
+            </button>
+        </article>
+
+        <article class="funding-card">
+            <h3>Option 2: Fund One Stage at a Time</h3>
+
+            <p>
+                Start with the amount you have available. Agree on the work
+                that amount can reasonably cover, then plan the next stage.
+            </p>
+
+            <ul>
+                <li>Agree on the work and estimated cost.</li>
+                <li>Approve the stage budget before work begins.</li>
+                <li>Record deposits, expenses and receipts.</li>
+                <li>Review progress before funding the next stage.</li>
+            </ul>
+
+            <button class="button button-green"
+                    onclick="chooseFunding('Stage-by-stage funding')">
+                Explore Stage Funding
+            </button>
+        </article>
+
+        <article class="funding-card">
+            <h3>Option 3: Save Toward a Target</h3>
+
+            <p>
+                If you are not ready to begin construction, you can plan
+                toward an agreed starting amount first.
+            </p>
+
+            <ul>
+                <li>Set a target with your project team.</li>
+                <li>Keep a record of each amount received.</li>
+                <li>Review your progress toward the target.</li>
+                <li>Start only after the required funds and plans are agreed.</li>
+            </ul>
+
+            <button class="button button-green"
+                    onclick="chooseFunding('Save toward a target')">
+                Explore Target Funding
+            </button>
+        </article>
+
+    </div>
+
+    <div class="section-heading" style="margin-top: 30px; margin-bottom: 0;">
+        <p>
+            Construction funding is separate from HorizonView package fees.
+            Before funds are collected or construction begins, the funding
+            arrangements, approved work, payment records and applicable
+            terms must be clearly agreed.
+        </p>
+    </div>
+</section>
+
+<section class="contact-section">
+    <h2>Not Sure Which Option Is Right for You?</h2>
+
+    <p>
+        Speak with HorizonView about your project, budget, preferred
+        package or payment arrangements. You can also create your account
+        now and decide later.
+    </p>
+
+    <div class="contact-buttons">
+        <a href="start-project.html" class="button button-green">
+            Discuss Your Project
+        </a>
+
+        <a href="register.html" class="button button-outline">
+            Register for Free
+        </a>
+    </div>
+
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+</section>
+
+<footer>
+    <p>© 2026 HorizonView. Build in Ghana. Manage with confidence.</p>
+</footer>
+
+<script>
+    function showNotice(message) {
+        const notice = document.getElementById("notice");
+        notice.textContent = message;
+        notice.style.display = "block";
+        notice.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function choosePackage(packageName) {
+        showNotice(
+            "You selected " + packageName +
+            ". Package prices and online payment will be connected after " +
+            "we set the final prices and build the secure payment system. " +
+            "You can register for free or discuss your project now."
+        );
+    }
+
+    function chooseFunding(method) {
+        showNotice(
+            "You selected " + method +
+            ". This funding option will be set up after we connect the " +
+            "project records and secure payment system. No payment has been taken."
+        );
+    }
+</script>
+
+</body>
+</html>

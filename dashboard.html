@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Customer Dashboard | HorizonView</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f4f6f3;
+            color: #203629;
+            font-family: Arial, sans-serif;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .dashboard-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+
+        .sidebar {
+            width: 245px;
+            background: #173d2b;
+            color: white;
+            padding: 28px 18px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            font-size: 25px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .brand-subtitle {
+            color: #c4d7ca;
+            font-size: 12px;
+            margin-bottom: 38px;
+        }
+
+        .sidebar-label {
+            color: #a9c1b1;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            margin: 25px 10px 12px;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 12px;
+            margin: 5px 0;
+            border-radius: 7px;
+            color: #e3eee6;
+            font-size: 14px;
+        }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: #2a5b40;
+            color: white;
+        }
+
+        .sidebar-bottom {
+            margin-top: 35px;
+            padding-top: 20px;
+            border-top: 1px solid #42634e;
+        }
+
+        /* MAIN CONTENT */
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .topbar {
+            background: white;
+            padding: 22px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid #e6eae5;
+        }
+
+        .topbar h2 {
+            font-size: 19px;
+            margin: 0;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #dce9df;
+            color: #173d2b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .content {
+            padding: 32px;
+            max-width: 1500px;
+            margin: auto;
+        }
+
+        .welcome {
+            margin-bottom: 28px;
+        }
+
+        .welcome h1 {
+            font-size: 29px;
+            margin: 0 0 10px;
+            color: #173d2b;
+        }
+
+        .welcome p {
+            color: #68766b;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        /* PROJECT HEADER */
+
+        .project-header {
+            background: #173d2b;
+            color: white;
+            border-radius: 14px;
+            padding: 27px;
+            margin-bottom: 24px;
+        }
+
+        .project-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .project-header h2 {
+            margin: 0 0 8px;
+            font-size: 23px;
+        }
+
+        .project-header p {
+            margin: 0;
+            color: #d4e4d8;
+            line-height: 1.6;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 8px 12px;
+            background: #d8eee0;
+            color: #1c6137;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .project-progress {
+            margin-top: 25px;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .progress-track {
+            height: 9px;
+            background: #486651;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 65%;
+            background: #a8d5b4;
+            border-radius: 20px;
+        }
+
+        /* SECTION HEADINGS */
+
+        .section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin: 32px 0 17px;
+        }
+
+        .section-heading h2 {
+            font-size: 20px;
+            margin: 0;
+            color: #173d2b;
+        }
+
+        .section-heading a {
+            font-size: 13px;
+            color: #246440;
+            font-weight: bold;
+        }
+
+        /* SUMMARY CARDS */
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .summary-card {
+            background: white;
+            border: 1px solid #e5eae4;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .summary-icon {
+            font-size: 23px;
+            margin-bottom: 15px;
+        }
+
+        .summary-label {
+            color: #718075;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .summary-value {
+            color: #173d2b;
+            font-size: 23px;
+            font-weight: bold;
+        }
+
+        .summary-note {
+            font-size: 12px;
+            color: #778279;
+            margin-top: 8px;
+        }
+
+        /* GENERAL CARDS */
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border: 1px solid #e5eae4;
+            border-radius: 12px;
+            padding: 22px;
+            min-width: 0;
+        }
+
+        .dashboard-card h3 {
+            font-size: 17px;
+            color: #173d2b;
+            margin: 0 0 10px;
+        }
+
+        .dashboard-card p {
+            font-size: 13px;
+            color: #718075;
+            line-height: 1.6;
+        }
+
+        .feature-icon {
+            font-size: 30px;
+            margin-bottom: 14px;
+        }
+
+        .feature-button {
+            display: inline-block;
+            border: none;
+            background: #173d2b;
+            color: white;
+            padding: 11px 15px;
+            border-radius: 7px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .feature-button:hover {
+            background: #2a5b40;
+        }
+
+        .feature-button.secondary {
+            background: #e5eee7;
+            color: #173d2b;
+        }
+
+        /* PHOTO AND VIDEO AREAS */
+
+        .media-placeholder {
+            min-height: 145px;
+            background: #e7eee8;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            font-size: 35px;
+            margin-bottom: 15px;
+        }
+
+        .media-placeholder span {
+            display: block;
+            font-size: 12px;
+            color: #617265;
+            margin-top: 8px;
+        }
+
+        .media-tag {
+            display: inline-block;
+            background: #e6eee8;
+            color: #285d3c;
+            padding: 6px 9px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .live-card {
+            border: 1px solid #d8c9a8;
+            background: #fffdf7;
+        }
+
+        .platinum-tag {
+            display: inline-block;
+            background: #e9e1f5;
+            color: #634294;
+            padding: 6px 9px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .live-placeholder {
+            min-height: 145px;
+            background: #292e2b;
+            color: white;
+            border-radius: 9px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 20px;
+        }
+
+        .live-placeholder .camera-icon {
+            font-size: 35px;
+            margin-bottom: 10px;
+        }
+
+        .live-placeholder span {
+            font-size: 12px;
+            color: #d1d8d2;
+        }
+
+        /* UPDATES */
+
+        .update-item {
+            display: flex;
+            gap: 13px;
+            padding: 15px 0;
+            border-bottom: 1px solid #edf0ec;
+        }
+
+        .update-item:last-child {
+            border-bottom: none;
+        }
+
+        .update-dot {
+            width: 10px;
+            height: 10px;
+            background: #43815a;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .update-item strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .update-item small {
+            color: #7b867e;
+            font-size: 12px;
+        }
+
+        /* PACKAGE */
+
+        .package-card {
+            background: #f0eafa;
+            border: 1px solid #dcd0ee;
+        }
+
+        .package-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #503475;
+            margin: 10px 0;
+        }
+
+        .package-list {
+            padding-left: 20px;
+            color: #51495d;
+            font-size: 13px;
+            line-height: 2;
+        }
+
+        .demo-note {
+            font-size: 12px;
+            color: #7b867e;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .mobile-menu {
+            display: none;
+        }
+
+        /* RESPONSIVE DESIGN */
+
+        @media (max-width: 1100px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .sidebar {
+                width: 210px;
+            }
+
+            .content {
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .dashboard-layout {
+                display: block;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 18px;
+            }
+
+            .brand {
+                margin-bottom: 5px;
+            }
+
+            .brand-subtitle {
+                margin-bottom: 15px;
+            }
+
+            .sidebar-label {
+                margin-top: 15px;
+            }
+
+            .sidebar nav {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 3px;
+            }
+
+            .sidebar a {
+                padding: 10px;
+            }
+
+            .sidebar-bottom {
+                margin-top: 15px;
+                padding-top: 10px;
+            }
+
+            .topbar {
+                padding: 18px;
+            }
+
+            .content {
+                padding: 18px;
+            }
+
+            .welcome h1 {
+                font-size: 25px;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 430px) {
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .summary-card {
+                padding: 14px;
+            }
+
+            .summary-value {
+                font-size: 19px;
+            }
+
+            .topbar h2 {
+                font-size: 16px;
+            }
+
+            .project-header {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="brand">HorizonView</div>
+        <div class="brand-subtitle">CONSTRUCTION MANAGEMENT</div>
+
+        <div class="sidebar-label">WORKSPACE</div>
+
+        <nav>
+            <a href="#overview" class="active">▦ &nbsp; Overview</a>
+            <a href="#progress">▤ &nbsp; Project Progress</a>
+            <a href="#photos">▧ &nbsp; Site Photos</a>
+            <a href="#recorded-videos">▶ &nbsp; Recorded Videos</a>
+            <a href="#live-video">◉ &nbsp; Live Video</a>
+            <a href="#budget">₵ &nbsp; Budget & Payments</a>
+            <a href="#updates">◷ &nbsp; Updates</a>
+            <a href="#messages">✉ &nbsp; Messages</a>
+            <a href="#documents">▣ &nbsp; Documents</a>
+            <a href="#my-package">◇ &nbsp; My Package</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="index.html">← Back to Website</a>
+            <a href="login.html">Log Out</a>
+        </div>
+
+    </aside>
+
+    <!-- MAIN DASHBOARD -->
+    <main class="main-content">
+
+        <header class="topbar">
+            <h2>Customer Dashboard</h2>
+
+            <div class="topbar-right">
+                <span style="font-size:13px;">My Account</span>
+                <div class="user-avatar">HV</div>
+            </div>
+        </header>
+
+        <div class="content" id="overview">
+
+            <section class="welcome">
+                <h1>Welcome to HorizonView</h1>
+                <p>
+                    Keep track of your construction project,
+                    view updates, and stay connected with your team.
+                </p>
+            </section>
+
+            <!-- PROJECT OVERVIEW -->
+            <section class="project-header" id="progress">
+
+                <div class="project-header-top">
+                    <div>
+                        <h2>My Construction Project</h2>
+                        <p>Project location: Accra, Ghana</p>
+                        <p style="margin-top:6px;">
+                            Project reference: HV-DEMO-001
+                        </p>
+                    </div>
+
+                    <span class="status-pill">● In Progress</span>
+                </div>
+
+                <div class="project-progress">
+                    <div class="progress-labels">
+                        <span>Overall Construction Progress</span>
+                        <strong>65%</strong>
+                    </div>
+
+                    <div class="progress-track">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- SUMMARY -->
+            <section class="summary-grid">
+
+                <div class="summary-card">
+                    <div class="summary-icon">🏗️</div>
+                    <div class="summary-label">Current Stage</div>
+                    <div class="summary-value" style="font-size:20px;">
+                        Construction
+                    </div>
+                    <div class="summary-note">Latest recorded stage</div>
+                </div>
+
+                <div class="summary-card" id="budget">
+                    <div class="summary-icon">₵</div>
+                    <div class="summary-label">Project Budget</div>
+                    <div class="summary-value">GH₵450k</div>
+                    <div class="summary-note">Illustrative budget</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">💳</div>
+                    <div class="summary-label">Amount Spent</div>
+                    <div class="summary-value">GH₵315k</div>
+                    <div class="summary-note">Illustrative spending</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">📅</div>
+                    <div class="summary-label">Next Update</div>
+                    <div class="summary-value" style="font-size:20px;">
+                        Pending
+                    </div>
+                    <div class="summary-note">
+                        Awaiting project team
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- PHOTOS AND VIDEOS -->
+            <div class="section-heading" id="photos">
+                <h2>Site Media Centre</h2>
+            </div>
+
+            <section class="card-grid">
+
+                <!-- PHOTOS -->
+                <article class="dashboard-card">
+                    <div class="media-placeholder">
+                        📷
+                    </div>
+
+                    <span class="media-tag">SITE PHOTOS</span>
+
+                    <h3>Construction Photos</h3>
+
+                    <p>
+                        View dated photos showing the progress
+                        of your building project.
+                    </p>
+
+                    <button class="feature-button"
+                        onclick="showNotice('Site Photos')">
+                        View Site Photos
+                    </button>
+                </article>
+
+                <!-- RECORDED VIDEOS -->
+                <article class="dashboard-card" id="recorded-videos">
+                    <div class="media-placeholder">
+                        ▶
+                    </div>
+
+                    <span class="media-tag">RECORDED MEDIA</span>
+
+                    <h3>Recorded Site Videos</h3>
+
+                    <p>
+                        Watch saved construction walkthroughs,
+                        work updates, and site inspection videos.
+                    </p>
+
+                    <button class="feature-button"
+                        onclick="showNotice('Recorded Videos')">
+                        Watch Videos
+                    </button>
+                </article>
+
+                <!-- LIVE VIDEO -->
+                <article class="dashboard-card live-card" id="live-video">
+
+                    <div class="live-placeholder">
+                        <div class="camera-icon">📹</div>
+                        <strong>Live Site Tour</strong>
+                        <span>Live streaming access requires Platinum</span>
+                    </div>
+
+                    <span class="platinum-tag">PLATINUM EXCLUSIVE</span>
+
+                    <h3>Live Video Monitoring</h3>
+
+                    <p>
+                        Join a scheduled live video tour of your
+                        construction site and communicate with
+                        your project team in real time.
+                    </p>
+
+                    <button class="feature-button"
+                        onclick="showNotice('Platinum Live Video')">
+                        Explore Live Video
+                    </button>
+
+                </article>
+
+                <!-- BUDGET -->
+                <article class="dashboard-card">
+                    <div class="feature-icon">💰</div>
+
+                    <h3>Budget & Payments</h3>
+
+                    <p>
+                        Review project costs, payment records,
+                        approved expenses, and your remaining budget.
+                    </p>
+
+                    <button class="feature-button secondary"
+                        onclick="showNotice('Budget & Payments')">
+                        View Budget
+                    </button>
+                </article>
+
+            </section>
+
+            <!-- UPDATES AND PACKAGE -->
+            <div class="section-heading" id="updates">
+                <h2>Project Updates</h2>
+            </div>
+
+            <section class="card-grid">
+
+                <article class="dashboard-card">
+                    <h3>Latest Activity</h3>
+
+                    <div class="update-item">
+                        <div class="update-dot"></div>
+                        <div>
+                            <strong>Project dashboard created</strong>
+                            <small>Website demonstration</small>
+                        </div>
+                    </div>
+
+                    <div class="update-item">
+                        <div class="update-dot"></div>
+                        <div>
+                            <strong>Construction progress</strong>
+                            <small>Sample information only</small>
+                        </div>
+                    </div>
+
+                    <div class="update-item">
+                        <div class="update-dot"></div>
+                        <div>
+                            <strong>Next site update</strong>
+                            <small>Will appear when submitted by the team</small>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="dashboard-card package-card" id="my-package">
+
+                    <span class="platinum-tag">PREMIUM SERVICE</span>
+
+                    <h3>HorizonView Packages</h3>
+
+                    <div class="package-name">Silver · Gold · Platinum</div>
+
+                    <p>
+                        Choose a monitoring package that matches
+                        the level of support you need.
+                    </p>
+
+                    <ul class="package-list">
+                        <li><strong>Silver:</strong> Photos and reports</li>
+                        <li><strong>Gold:</strong> Recorded videos and budget tracking</li>
+                        <li><strong>Platinum:</strong> Gold services plus live site tours</li>
+                    </ul>
+
+                    <button class="feature-button"
+                        onclick="showNotice('Service Packages')">
+                        Explore Packages
+                    </button>
+
+                </article>
+
+            </section>
+
+            <!-- MESSAGES AND DOCUMENTS -->
+            <div class="section-heading">
+                <h2>Communication & Records</h2>
+            </div>
+
+            <section class="card-grid">
+
+                <article class="dashboard-card" id="messages">
+                    <div class="feature-icon">💬</div>
+
+                    <h3>Messages</h3>
+
+                    <p>
+                        Communicate with your project manager
+                        and receive important project information.
+                    </p>
+
+                    <button class="feature-button secondary"
+                        onclick="showNotice('Messages')">
+                        Open Messages
+                    </button>
+                </article>
+
+                <article class="dashboard-card" id="documents">
+                    <div class="feature-icon">📁</div>
+
+                    <h3>Project Documents</h3>
+
+                    <p>
+                        Access contracts, drawings, receipts,
+                        inspection reports, and other project records.
+                    </p>
+
+                    <button class="feature-button secondary"
+                        onclick="showNotice('Project Documents')">
+                        View Documents
+                    </button>
+                </article>
+
+            </section>
+
+            <p class="demo-note">
+                HorizonView dashboard prototype. All displayed project
+                details and figures are examples, not live customer data.
+            </p>
+
+        </div>
+    </main>
+
+</div>
+
+<script>
+    function showNotice(feature) {
+        alert(
+            feature +
+            " is part of the HorizonView dashboard design. " +
+            "We will connect this feature to the backend when " +
+            "we build the project management system."
+        );
+    }
+</script>
+
+</body>
+</html>
