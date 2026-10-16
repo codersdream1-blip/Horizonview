@@ -161,10 +161,20 @@ def project_detail(project_id: int, request: Request):
         for u in db.get_updates_for_project(project_id)
     ]
 
+    photos = [
+        projects.display_photo(p)
+        for p in db.get_photos_for_project(project_id)
+    ]
+
     return templates.TemplateResponse(
         request=request,
         name="project_detail.html",
-        context={"project": shown, "updates": updates, "stages": projects.STAGES},
+        context={
+            "project": shown,
+            "updates": updates,
+            "photos": photos,
+            "stages": projects.STAGES,
+        },
     )
 
 

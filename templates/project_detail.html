@@ -238,8 +238,56 @@
             line-height: 1.6;
         }
 
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        .photo-card {
+            background: white;
+            border: 1px solid #e2e8e3;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .photo-card img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            display: block;
+            background: #e7eee8;
+        }
+
+        .photo-card figcaption {
+            padding: 12px 14px;
+            font-size: 13px;
+            color: #203629;
+            line-height: 1.5;
+        }
+
+        .photo-card figcaption span {
+            display: block;
+            color: #7b867e;
+            font-size: 12px;
+        }
+
+        .photo-card .photo-meta {
+            border-top: 1px solid #edf0ec;
+            margin-top: 6px;
+            padding-top: 6px;
+            word-break: break-all;
+            font-size: 11px;
+        }
+
         @media (max-width: 620px) {
             .add-update-box .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .photo-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -318,9 +366,52 @@
                 </div>
             </div>
 
+            <h2 class="progress-heading">Site photos</h2>
+
+            {% if photos %}
+            <section class="photo-grid">
+                {% for p in photos %}
+                <figure class="photo-card">
+                    <img src="{{ p.api_url }}" alt="{{ p.caption or 'Site photo' }}" loading="lazy">
+                    <figcaption>
+                        {{ p.caption or "Site photo" }}
+                        <span>{{ p.created_display }}</span>
+                        <span class="photo-meta">Original file: {{ p.original_filename }}</span>
+                    </figcaption>
+                </figure>
+                {% endfor %}
+            </section>
+            {% else %}
+            <p class="update-empty">No site photos yet.</p>
+            {% endif %}
+
+            <section class="add-update-box">
+                <h3>Upload a site photo</h3>
+
+                <form id="photoUploadForm">
+                    <label for="photoFile">Photo (JPEG or PNG, up to 5 MB) *</label>
+                    <input type="file" id="photoFile"
+                           accept="image/jpeg,image/png"
+                           required>
+
+                    <label for="photoCaption" style="margin-top: 12px;">Caption</label>
+                    <input type="text" id="photoCaption" maxlength="200"
+                           placeholder="Example: Foundation setting before casting">
+
+                    <button type="submit" class="project-submit">Upload Photo</button>
+                    <p id="photoMessage" class="form-msg" role="status" aria-live="polite"></p>
+                </form>
+
+                <p class="note-explain">
+                    Photos are stored with a random safe name, checked by
+                    file content, and visible on this page from any device
+                    you log in on.
+                </p>
+            </section>
+
             <div class="pending-note">
-                Progress updates, photos and payment records will appear
-                on this page as your HorizonView project team records them.
+                Recorded videos and payment records will appear on this
+                page as your HorizonView project team records them.
                 Nothing here is filled in with sample data.
             </div>
 
@@ -448,6 +539,64 @@
                     "Could not reach the HorizonView server. Make sure it is running.";
             } finally {
                 updateButton.disabled = false;
+            }
+        });
+
+        const photoForm = document.getElementById("photoUploadForm");
+        const photoMessage = document.getElementById("photoMessage");
+        const photoButton = photoForm.querySelector("button[type=submit]");
+
+        photoForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const fileInput = document.getElementById("photoFile");
+            if (!fileInput.files || fileInput.files.length === 0) {
+                photoMessage.textContent = "Choose a photo file first.";
+                return;
+            }
+            if (fileInput.files[0].size > 5 * 1024 * 1024) {
+                photoMessage.textContent =
+                    "That file is larger than 5 MB. Choose a smaller photo.";
+                return;
+            }
+
+            photoButton.disabled = true;
+            photoMessage.textContent = "Uploading...";
+
+            const projectId = window.location.pathname.split("/")[2];
+            const formData = new FormData();
+            formData.append("photo", fileInput.files[0]);
+            formData.append("caption",
+                document.getElementById("photoCaption").value);
+
+            try {
+                // No Content-Type header set by hand: the browser adds the
+                // multipart boundary itself when we send a FormData.
+                const response = await fetch(`/api/projects/${projectId}/photos`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                let data = null;
+                try { data = await response.json(); } catch (e) { data = null; }
+
+                if (response.ok) {
+                    window.location.reload();
+                    return;
+                }
+
+                photoMessage.textContent = (data && data.message) ||
+                    "Upload failed. Please try again.";
+            } catch (networkError) {
+                photoMessage.textContent =
+                    "Could not reach the HorizonView server. Make sure it is running.";
+            } finally {
+                photoButton.disabled = false;
             }
         });
     </script>

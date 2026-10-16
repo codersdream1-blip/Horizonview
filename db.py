@@ -51,6 +51,19 @@ CREATE TABLE IF NOT EXISTS project_updates (
     progress_percent INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+
+-- Uploaded site photos. Files themselves live on disk under
+-- uploads/ (never commit binary media or the temp webroot).
+CREATE TABLE IF NOT EXISTS project_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    uploader_id INTEGER NOT NULL REFERENCES users(id),
+    original_filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    extension TEXT NOT NULL,
+    caption TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -165,3 +178,41 @@ def get_updates_for_project(project_id: int) -> list[dict]:
             (project_id,),
         ).fetchall()
         return [dict(row) for row in rows]
+
+
+def create_photo(
+    project_id: int,
+    uploader_id: int,
+    original_filename: str,
+    stored_path: str,
+    extension: str,
+    caption: str | None,
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO project_photos (project_id, uploader_id, "
+            "original_filename, stored_path, extension, caption, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (project_id, uploader_id, original_filename, stored_path,
+             extension, caption, now),
+        )
+        return cursor.lastrowid
+
+
+def get_photos_for_project(project_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM project_photos WHERE project_id = ? "
+            "ORDER BY created_at DESC, id DESC",
+            (project_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def get_photo_by_id(photo_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM project_photos WHERE id = ?", (photo_id,)
+        ).fetchone()
+        return dict(row) if row else None

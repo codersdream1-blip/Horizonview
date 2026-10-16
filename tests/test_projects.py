@@ -283,3 +283,141 @@ def test_anonymous_cannot_add_or_list_updates(client):
               "progress_percent": 10},
     )
     assert response.status_code == 401
+
+
+# ---------- Site photos ----------
+
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"x" * 2048
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"y" * 2048
+
+
+def upload_photo(client, project_id, filename="site.jpg",
+                 content=JPEG_BYTES, caption="Foundation work",
+                 content_type="image/jpeg"):
+    return client.post(
+        f"/api/projects/{project_id}/photos",
+        files={"photo": (filename, content, content_type)},
+        data={"caption": caption},
+    )
+
+
+def test_upload_photo_stores_file_and_serves_it_back(client, tmp_path,
+                                                    monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    response = upload_photo(client, project_id)
+    assert response.status_code == 201
+
+    photos = db.get_photos_for_project(project_id)
+    assert len(photos) == 1
+    photo_id = photos[0]["id"]
+    assert photos[0]["caption"] == "Foundation work"
+    assert photos[0]["extension"] == "jpg"
+    assert photos[0]["stored_path"].startswith(f"project_{project_id}/")
+
+    served = client.get(f"/api/photos/{photo_id}")
+    assert served.status_code == 200
+    assert served.headers["content-type"].startswith("image/jpeg")
+    assert served.content == JPEG_BYTES
+
+
+def test_upload_png_is_detected_by_content(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    response = upload_photo(client, project_id, filename="plan.png",
+                            content=PNG_BYTES, content_type="image/png")
+    assert response.status_code == 201
+    assert db.get_photos_for_project(project_id)[0]["extension"] == "png"
+
+
+def test_rejects_non_image_content_even_with_image_content_type(
+        client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    # Declared as image/jpeg but the content is plain text: must be
+    # caught, never stored.
+    response = upload_photo(client, project_id, filename="fake.jpg",
+                            content=b"this is not really a photo",
+                            caption="", content_type="image/jpeg")
+    assert response.status_code == 400
+    assert "JPEG or PNG" in response.json()["message"]
+    assert db.get_photos_for_project(project_id) == []
+
+
+def test_rejects_oversize_photo(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    six_mb = JPEG_BYTES + b"z" * (6 * 1024 * 1024)
+    response = upload_photo(client, project_id, content=six_mb)
+    assert response.status_code == 400
+    assert "5 MB" in response.json()["message"]
+    assert db.get_photos_for_project(project_id) == []
+
+
+def test_rejects_empty_file(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    response = upload_photo(client, project_id, content=b"")
+    assert response.status_code == 400
+
+
+def test_photo_page_shows_upload_form_and_thumbnails(client, tmp_path,
+                                                     monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    upload_photo(client, project_id, caption="Roof frame ready")
+    photo_id = db.get_photos_for_project(project_id)[0]["id"]
+
+    page = client.get(f"/projects/{project_id}").text
+    assert "Upload a site photo" in page
+    assert 'id="photoFile"' in page
+    assert f'<img src="/api/photos/{photo_id}"' in page
+    assert "Roof frame ready" in page
+
+
+def test_other_user_cannot_view_photo_and_anonymous_gets_401(
+        client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    upload_photo(client, project_id)
+    photo_id = db.get_photos_for_project(project_id)[0]["id"]
+
+    client.post("/api/logout")
+
+    other = dict(REGISTER_PAYLOAD, email="stranger2@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+    # Another logged-in user: 404, never a leak that the photo exists.
+    assert client.get(f"/api/photos/{photo_id}").status_code == 404
+
+    client.post("/api/logout")
+    assert client.get(f"/api/photos/{photo_id}").status_code == 401
+
+
+def test_upload_photo_requires_ownership(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    client.post("/api/logout")
+
+    other = dict(REGISTER_PAYLOAD, email="stranger3@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+
+    assert upload_photo(client, project_id).status_code == 404

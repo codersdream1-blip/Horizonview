@@ -6,13 +6,27 @@ before touching the database, so a user can only ever see and create
 their own records.
 """
 
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
 
 from auth import get_current_user
 import db
 
 router = APIRouter(prefix="/api", tags=["projects"])
+
+UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
+
+MAX_PHOTO_BYTES = 5 * 1024 * 1024  # 5 MB
+
+# Recognized by file signature (magic bytes), never by the browser's
+# declared content type, which is trivially forged.
+PHOTO_SIGNATURES = (
+    (b"\xff\xd8\xff", "jpg"),
+    (b"\x89PNG\r\n\x1a\n", "png"),
+)
 
 PROJECT_TYPES = {
     "construction": "New Construction",
@@ -202,6 +216,120 @@ async def add_project_update(project_id: int, request: Request):
         },
         status_code=201,
     )
+
+
+def detect_photo_extension(data: bytes) -> str | None:
+    for signature, extension in PHOTO_SIGNATURES:
+        if data.startswith(signature):
+            return extension
+    return None
+
+
+def display_photo(photo: dict) -> dict:
+    photo = dict(photo)
+    photo["created_display"] = photo["created_at"][:10]
+    photo["api_url"] = f"/api/photos/{photo['id']}"
+    return photo
+
+
+@router.post("/projects/{project_id}/photos")
+async def upload_photo(
+    project_id: int,
+    request: Request,
+    photo: UploadFile = File(...),
+    caption: str = Form(""),
+):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    data = await photo.read()
+
+    if not data:
+        return JSONResponse(
+            {"ok": False, "message": "The uploaded file is empty."}, status_code=400
+        )
+
+    if len(data) > MAX_PHOTO_BYTES:
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Photo is too large. Maximum allowed size is 5 MB.",
+            },
+            status_code=400,
+        )
+
+    extension = detect_photo_extension(data)
+    if not extension:
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Only JPEG or PNG photos are accepted. The file "
+                           "content did not look like either.",
+            },
+            status_code=400,
+        )
+
+    # Random filename: original names are user-controlled and must
+    # never touch the filesystem directly.
+    project_dir = UPLOAD_DIR / f"project_{project_id}"
+    project_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.{extension}"
+    (project_dir / filename).write_bytes(data)
+
+    clean_caption = str(caption).strip()[:200] or None
+
+    db.create_photo(
+        project_id=project_id,
+        uploader_id=user["id"],
+        original_filename=str(photo.filename or "unnamed")[:200],
+        stored_path=f"project_{project_id}/{filename}",
+        extension=extension,
+        caption=clean_caption,
+    )
+
+    return JSONResponse(
+        {"ok": True, "message": "Photo uploaded.", "caption": clean_caption},
+        status_code=201,
+    )
+
+
+@router.get("/photos/{photo_id}")
+async def serve_photo(photo_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    photo = db.get_photo_by_id(photo_id)
+    if not photo:
+        return JSONResponse(
+            {"ok": False, "message": "Photo not found."}, status_code=404
+        )
+
+    project = db.get_project_by_id(photo["project_id"])
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Photo not found."}, status_code=404
+        )
+
+    file_path = UPLOAD_DIR / photo["stored_path"]
+    if not file_path.is_file():
+        return JSONResponse(
+            {"ok": False, "message": "Photo not found."}, status_code=404
+        )
+
+    media_type = "image/png" if photo["extension"] == "png" else "image/jpeg"
+    return FileResponse(file_path, media_type=media_type)
 
 
 @router.get("/projects/{project_id}/updates")
