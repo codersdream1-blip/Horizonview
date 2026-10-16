@@ -1,0 +1,394 @@
+/* =================================
+PACKAGES PAGE
+
+Brand colours matched to the main
+HorizonView palette (css/style.css).
+================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --green: #173d2b;
+    --green-hover: #24563e;
+    --dark-green: #103b25;
+    --light-green: #eaf5ed;
+    --gold: #d4a72c;
+    --text: #1f2937;
+    --muted: #64748b;
+    --white: #ffffff;
+    --background: #f7f9f7;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text);
+    background: var(--background);
+    line-height: 1.6;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 17px 6%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.logo {
+    color: var(--green);
+    font-size: 25px;
+    font-weight: 800;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+}
+
+nav a {
+    font-size: 14px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+nav a:hover {
+    color: var(--green);
+}
+
+.nav-button {
+    background: var(--green);
+    color: white;
+    padding: 11px 17px;
+    border-radius: 7px;
+    transition: 0.2s;
+}
+
+.nav-button:hover {
+    background: var(--green-hover);
+}
+
+.hero {
+    background: linear-gradient(135deg, #103b25, #237345);
+    color: white;
+    padding: 75px 6% 80px;
+    text-align: center;
+}
+
+.eyebrow {
+    color: #bce8c8;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.hero h1 {
+    font-size: clamp(32px, 5vw, 50px);
+    line-height: 1.2;
+    margin: 18px auto;
+    max-width: 800px;
+}
+
+.hero p {
+    max-width: 680px;
+    margin: 0 auto 25px;
+    color: #e1f0e5;
+    font-size: 17px;
+}
+
+.button {
+    display: inline-block;
+    border: none;
+    border-radius: 7px;
+    padding: 13px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.2s;
+}
+
+.button:hover {
+    transform: translateY(-2px);
+}
+
+.button-light {
+    background: white;
+    color: var(--green);
+}
+
+.button-light:hover {
+    background: #f0f2ec;
+    color: var(--green);
+}
+
+.button-green {
+    background: var(--green);
+    color: white;
+}
+
+.button-green:hover {
+    background: var(--green-hover);
+    color: white;
+}
+
+.button-outline {
+    border: 1px solid var(--green);
+    color: var(--green);
+    background: white;
+}
+
+.button-outline:hover {
+    background: #f2f7f3;
+    color: var(--green);
+}
+
+.section {
+    padding: 65px 6%;
+}
+
+.section-heading {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 35px;
+}
+
+.section-heading h2 {
+    color: var(--green);
+    font-size: clamp(27px, 4vw, 36px);
+    margin-bottom: 10px;
+}
+
+.section-heading p {
+    color: var(--muted);
+}
+
+.package-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 23px;
+    max-width: 1150px;
+    margin: 0 auto;
+    align-items: stretch;
+}
+
+.package-card {
+    position: relative;
+    background: white;
+    border: 1px solid #e2e8e3;
+    border-radius: 14px;
+    padding: 30px 25px;
+    box-shadow: 0 5px 22px rgba(15, 45, 25, 0.04);
+    display: flex;
+    flex-direction: column;
+}
+
+.package-card.featured {
+    border: 2px solid var(--green);
+    box-shadow: 0 10px 30px rgba(20, 83, 45, 0.12);
+}
+
+.popular {
+    display: inline-block;
+    align-self: flex-start;
+    background: var(--light-green);
+    color: var(--green);
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.package-card h3 {
+    color: var(--green);
+    font-size: 25px;
+    margin-bottom: 7px;
+}
+
+.package-description {
+    color: var(--muted);
+    font-size: 14px;
+    min-height: 48px;
+}
+
+.price {
+    font-size: 25px;
+    font-weight: 800;
+    margin: 22px 0 4px;
+    color: var(--green);
+}
+
+.price-note {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 20px;
+}
+
+.package-card ul {
+    list-style: none;
+    margin: 8px 0 25px;
+    flex: 1;
+}
+
+.package-card li {
+    padding: 9px 0;
+    border-bottom: 1px solid #edf0ed;
+    font-size: 14px;
+}
+
+.package-card li::before {
+    content: "✓";
+    color: var(--green);
+    font-weight: 800;
+    margin-right: 9px;
+}
+
+.package-card .button {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.payment-note {
+    text-align: center;
+    max-width: 800px;
+    margin: 30px auto 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.funding-section {
+    background: var(--light-green);
+}
+
+.funding-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    max-width: 1050px;
+    margin: 0 auto;
+}
+
+.funding-card {
+    background: white;
+    border-radius: 14px;
+    padding: 30px;
+    border: 1px solid #dce9de;
+}
+
+.funding-card h3 {
+    color: var(--green);
+    font-size: 21px;
+    margin-bottom: 10px;
+}
+
+.funding-card p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 17px;
+}
+
+.funding-card ul {
+    padding-left: 20px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.funding-card li {
+    margin: 8px 0;
+}
+
+.contact-section {
+    text-align: center;
+    padding: 60px 6%;
+    background: white;
+}
+
+.contact-section h2 {
+    color: var(--green);
+    font-size: 30px;
+    margin-bottom: 12px;
+}
+
+.contact-section p {
+    max-width: 650px;
+    color: var(--muted);
+    margin: 0 auto 23px;
+}
+
+.contact-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.notice {
+    display: none;
+    background: #fff7db;
+    border: 1px solid #ecd88c;
+    color: #674f08;
+    border-radius: 8px;
+    padding: 13px;
+    margin-top: 15px;
+    font-size: 13px;
+}
+
+footer {
+    background: #102f1e;
+    color: #d9e7dc;
+    padding: 25px 6%;
+    text-align: center;
+    font-size: 13px;
+}
+
+@media (max-width: 900px) {
+    .package-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .funding-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    header {
+        padding: 16px 5%;
+    }
+
+    nav {
+        gap: 14px;
+    }
+
+    .hero {
+        padding: 55px 5%;
+    }
+
+    .section {
+        padding: 45px 5%;
+    }
+
+    .package-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .package-description {
+        min-height: auto;
+    }
+}
