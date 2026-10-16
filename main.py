@@ -14,9 +14,10 @@ import secrets
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 import auth
@@ -55,6 +56,16 @@ db.init_db()
 
 app.include_router(auth.router)
 
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def current_user(request: Request) -> dict | None:
+    """Return the logged-in user's DB record, or None."""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return None
+    return db.get_user_by_id(user_id)
+
 
 # --- Health check -----------------------------------------------------
 
@@ -75,11 +86,42 @@ def home():
     return FileResponse(BASE_DIR / "index.html", media_type="text/html")
 
 
+# /dashboard is user-specific: it must never be served without a
+# logged-in session, so it is rendered from a template instead of
+# the static-page whitelist.
+
+
+@app.get("/logout")
+def logout_page(request: Request):
+    """Full-page logout used by the dashboard's Log Out link."""
+    request.session.clear()
+    return RedirectResponse("/", status_code=303)
+
+
+@app.get("/dashboard")
+def dashboard(request: Request):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login.html", status_code=303)
+
+    name_parts = [p for p in user["full_name"].split() if p]
+    initials = "".join(p[0].upper() for p in name_parts[:2]) or "HV"
+
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "full_name": user["full_name"],
+            "email": user["email"],
+            "initials": initials,
+        },
+    )
+
+
 PAGES = {
     "index.html",
     "login.html",
     "register.html",
-    "dashboard.html",
     "packages.html",
     "start-project.html",
 }
@@ -88,6 +130,9 @@ PAGES = {
 @app.get("/{page_name}")
 def page(page_name: str):
     if page_name not in PAGES:
+        if page_name == "dashboard.html":
+            # Friendly redirect for old bookmarks.
+            return RedirectResponse("/dashboard", status_code=303)
         raise HTTPException(status_code=404, detail="Page not found")
     return FileResponse(BASE_DIR / page_name, media_type="text/html")
 

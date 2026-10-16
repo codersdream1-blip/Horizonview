@@ -141,5 +141,45 @@ def test_logout_clears_session(client):
     assert client.get("/api/me").json()["logged_in"] is False
 
 
+def test_logout_page_redirects_home_and_clears_session(client):
+    client.post("/api/register", json=REGISTER_PAYLOAD)
+    client.post(
+        "/api/login",
+        json={"email": "akosua@example.com", "password": "correct-horse-battery"},
+    )
+    assert client.get("/api/me").json()["logged_in"] is True
+
+    response = client.get("/logout", follow_redirects=False)
+    assert response.status_code == 303
+    assert client.get("/api/me").json()["logged_in"] is False
+
+
+def test_dashboard_requires_login(client):
+    response = client.get("/dashboard", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login.html"
+
+
+def test_dashboard_shows_logged_in_user(client):
+    client.post("/api/register", json=REGISTER_PAYLOAD)
+    client.post(
+        "/api/login",
+        json={"email": "akosua@example.com", "password": "correct-horse-battery"},
+    )
+
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    body = response.text
+    assert "Welcome, Akosua Mensah" in body
+    assert "akosua@example.com" in body
+    assert "AM" in body  # initials in the avatar circle
+
+
+def test_old_dashboard_bookmark_redirects(client):
+    response = client.get("/dashboard.html", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/dashboard"
+
+
 def test_me_is_anonymous_without_login(client):
     assert client.get("/api/me").json() == {"logged_in": False}

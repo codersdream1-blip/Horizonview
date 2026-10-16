@@ -6,7 +6,7 @@
 
     <title>Customer Dashboard | HorizonView</title>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/css/style.css">
 
     <style>
         * {
@@ -601,8 +601,8 @@
         </nav>
 
         <div class="sidebar-bottom">
-            <a href="index.html">← Back to Website</a>
-            <a href="login.html">Log Out</a>
+            <a href="/index.html">← Back to Website</a>
+            <a href="/logout">Log Out</a>
         </div>
 
     </aside>
@@ -614,8 +614,8 @@
             <h2>Customer Dashboard</h2>
 
             <div class="topbar-right">
-                <span style="font-size:13px;">My Account</span>
-                <div class="user-avatar">HV</div>
+                <span style="font-size:13px;">{{ email }}</span>
+                <div class="user-avatar">{{ initials }}</div>
             </div>
         </header>
 
@@ -627,7 +627,7 @@
             </div>
 
             <section class="welcome">
-                <h1>Welcome to HorizonView</h1>
+                <h1>Welcome, {{ full_name }}</h1>
                 <p>
                     Keep track of your construction project,
                     view updates, and stay connected with your team.
