@@ -157,9 +157,9 @@ transition: 0.2s;
 
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
 
 border-color: #173d2b;
 
@@ -211,7 +211,8 @@ transition: 0.2s;
 
 }
 
-.upload-box {
+.upload-box:hover,
+.upload-box:focus-within {
 
 border-color: #173d2b;
 
@@ -286,7 +287,7 @@ transition: 0.2s;
 
 }
 
-.submit-btn {
+.submit-btn:hover {
 
 background: #24563e;
 

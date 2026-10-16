@@ -2,7 +2,7 @@
 HORIZONVIEW - MAIN STYLES
 ================================ */
 
-{
+* {
 margin: 0;
 padding: 0;
 box-sizing: border-box;
@@ -66,14 +66,14 @@ gap: 28px;
 
 .navbar nav a {
 font-size: 14px;
-color: #3e4942;
+color: #173d2b;
 
 transition: 0.2s;
 
 }
 
-.navbar nav a {
-color: #173d2b;
+.navbar nav a:hover {
+color: #24563e;
 }
 
 /* NAV BUTTONS */
@@ -108,7 +108,7 @@ transition: 0.2s;
 
 }
 
-.primary-btn {
+.primary-btn:hover {
 background: #24563e;
 }
 
@@ -131,6 +131,11 @@ transition: 0.2s;
 
 .secondary-btn {
 background: white;
+color: #173d2b;
+}
+
+.secondary-btn:hover {
+background: #f0f2ec;
 color: #173d2b;
 }
 
@@ -322,7 +327,7 @@ transition: 0.2s;
 
 }
 
-.service-card {
+.service-card:hover {
 transform: translateY(-4px);
 }
 
