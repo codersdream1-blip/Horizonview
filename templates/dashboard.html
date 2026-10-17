@@ -75,6 +75,35 @@
             color: white;
         }
 
+        /* PLANNED features in the sidebar look intentionally dimmed
+           and carry an honest tag, so nothing reads as usable when
+           it is not. */
+
+        .sidebar .planned-link {
+            font-size: 13px;
+            color: #93ac9c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar .planned-link:hover {
+            background: #2a5b40;
+            color: #c4d7ca;
+        }
+
+        .plan-tag {
+            background: #35564a;
+            color: #a9c1b1;
+            border-radius: 4px;
+            font-size: 9px;
+            letter-spacing: 0.08em;
+            padding: 3px 5px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
         .sidebar-bottom {
             margin-top: 35px;
             padding-top: 20px;
@@ -330,26 +359,6 @@
 
         /* PHOTO AND VIDEO AREAS */
 
-        .media-placeholder {
-            min-height: 145px;
-            background: #e7eee8;
-            border-radius: 9px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 20px;
-            font-size: 35px;
-            margin-bottom: 15px;
-        }
-
-        .media-placeholder span {
-            display: block;
-            font-size: 12px;
-            color: #617265;
-            margin-top: 8px;
-        }
-
         .media-tag {
             display: inline-block;
             background: #e6eee8;
@@ -361,44 +370,19 @@
             margin-bottom: 10px;
         }
 
-        .live-card {
-            border: 1px solid #d8c9a8;
-            background: #fffdf7;
-        }
+        /* "Coming later" honesty badge above each planned-feature
+           card, so the panel's real status is the first thing read. */
 
-        .platinum-tag {
+        .plan-label {
             display: inline-block;
-            background: #e9e1f5;
-            color: #634294;
-            padding: 6px 9px;
+            background: #f3ede0;
+            color: #7a5b14;
             border-radius: 5px;
-            font-size: 11px;
+            padding: 6px 9px;
+            font-size: 10px;
             font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .live-placeholder {
-            min-height: 145px;
-            background: #292e2b;
-            color: white;
-            border-radius: 9px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            margin-bottom: 15px;
-            padding: 20px;
-        }
-
-        .live-placeholder .camera-icon {
-            font-size: 35px;
-            margin-bottom: 10px;
-        }
-
-        .live-placeholder span {
-            font-size: 12px;
-            color: #d1d8d2;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
         }
 
         /* UPDATES */
@@ -498,27 +482,6 @@
 
         .dash-photo-thumb:hover img {
             outline: 2px solid #43815a;
-        }
-
-        .feature-notice {
-            background: #fff7db;
-            border: 1px solid #ecd88c;
-            color: #674f08;
-            border-radius: 10px;
-            padding: 16px 20px;
-            margin-bottom: 25px;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .feature-notice strong {
-            display: block;
-            color: #4f3d06;
-            margin-bottom: 6px;
-        }
-
-        .feature-notice[hidden] {
-            display: none;
         }
 
         .mobile-menu {
@@ -630,19 +593,30 @@
         <div class="brand">HorizonView</div>
         <div class="brand-subtitle">CONSTRUCTION MANAGEMENT</div>
 
-        <div class="sidebar-label">WORKSPACE</div>
+        <div class="sidebar-label">YOUR DATA</div>
 
         <nav>
             <a href="#overview" class="active">▦ &nbsp; Overview</a>
             <a href="#projects">▤ &nbsp; My Projects</a>
             <a href="#photos">▧ &nbsp; Site Photos</a>
-            <a href="#recorded-videos">▶ &nbsp; Recorded Videos</a>
-            <a href="#live-video">◉ &nbsp; Live Video</a>
             <a href="#budget">₵ &nbsp; Budget & Payments</a>
             <a href="#updates">◷ &nbsp; Updates</a>
             <a href="#messages">✉ &nbsp; Messages</a>
             <a href="#documents">▣ &nbsp; Documents</a>
-            <a href="#my-package">◇ &nbsp; My Package</a>
+        </nav>
+
+        <div class="sidebar-label">COMING LATER</div>
+
+        <nav>
+            <a href="#recorded-videos" class="planned-link">
+                ▶ &nbsp; Recorded Videos <span class="plan-tag">PLANNED</span>
+            </a>
+            <a href="#live-video" class="planned-link">
+                ◉ &nbsp; Live Video <span class="plan-tag">PLATINUM</span>
+            </a>
+            <a href="#my-package" class="planned-link">
+                ◇ &nbsp; Packages &amp; Plans <span class="plan-tag">INFO</span>
+            </a>
         </nav>
 
         <div class="sidebar-bottom">
@@ -665,11 +639,6 @@
         </header>
 
         <div class="content" id="overview">
-
-            <div id="featureNotice" class="feature-notice" role="status" aria-live="polite" hidden>
-                <strong id="featureNoticeTitle"></strong>
-                <span id="featureNoticeText"></span>
-            </div>
 
             <section class="welcome">
                 <h1>Welcome, {{ full_name }}</h1>
@@ -788,52 +757,9 @@
                     {% endif %}
                 </article>
 
-                <!-- RECORDED VIDEOS -->
-                <article class="dashboard-card" id="recorded-videos">
-                    <div class="media-placeholder">
-                        ▶
-                    </div>
+                <!-- RECORDED VIDEOS: planned, honestly labelled -->
 
-                    <span class="media-tag">RECORDED MEDIA</span>
-
-                    <h3>Recorded Site Videos</h3>
-
-                    <p>
-                        Watch saved construction walkthroughs,
-                        work updates, and site inspection videos.
-                    </p>
-
-                    <button class="feature-button"
-                        onclick="showNotice('Recorded Videos')">
-                        Watch Videos
-                    </button>
-                </article>
-
-                <!-- LIVE VIDEO -->
-                <article class="dashboard-card live-card" id="live-video">
-
-                    <div class="live-placeholder">
-                        <div class="camera-icon">📹</div>
-                        <strong>Live Site Tour</strong>
-                        <span>Live streaming access requires Platinum</span>
-                    </div>
-
-                    <span class="platinum-tag">PLATINUM EXCLUSIVE</span>
-
-                    <h3>Live Video Monitoring</h3>
-
-                    <p>
-                        Join a scheduled live video tour of your
-                        construction site and communicate with
-                        your project team in real time.
-                    </p>
-
-                    <button class="feature-button"
-                        onclick="showNotice('Platinum Live Video')">
-                        Explore Live Video
-                    </button>
-
-                </article>
+                <!-- LIVE VIDEO: planned, honestly labelled -->
 
                 <!-- BUDGET (real totals from the expense ledger) -->
                 <article class="dashboard-card" id="budget">
@@ -909,15 +835,17 @@
 
                 <article class="dashboard-card package-card" id="my-package">
 
-                    <span class="platinum-tag">PREMIUM SERVICE</span>
+                    <span class="media-tag">SERVICE LEVELS</span>
 
                     <h3>HorizonView Packages</h3>
 
                     <div class="package-name">Silver · Gold · Platinum</div>
 
                     <p>
-                        Choose a monitoring package that matches
-                        the level of support you need.
+                        Compare the proposed monitoring levels. Fees are
+                        confirmed with your administrator and paid only
+                        when you choose a package — the dashboard works
+                        for every customer either way.
                     </p>
 
                     <ul class="package-list">
@@ -927,9 +855,50 @@
                     </ul>
 
                     <a href="packages.html" class="feature-button">
-                        Explore Packages
+                        Compare Packages
                     </a>
 
+                </article>
+
+            </section>
+
+            <!-- COMING LATER: planned features, kept clearly separate
+                 from the working panels above. No pretend buttons. -->
+
+            <div class="section-heading" id="planned-head">
+                <h2>Coming Later</h2>
+                <a href="start-project.html">Talk to the Team</a>
+            </div>
+
+            <section class="card-grid">
+
+                <article class="dashboard-card" id="recorded-videos">
+                    <span class="plan-label">PLANNED — NOT CONNECTED YET</span>
+
+                    <h3>Recorded Site Videos</h3>
+
+                    <p>
+                        Gold customers will watch saved site
+                        walkthroughs, work updates and inspection
+                        videos here once video uploads are connected
+                        to the backend. Nothing has been recorded and
+                        nothing plays today.
+                    </p>
+                </article>
+
+                <article class="dashboard-card" id="live-video">
+                    <span class="plan-label">PLANNED — PLATINUM EXCLUSIVE</span>
+
+                    <h3>Live Video Monitoring</h3>
+
+                    <p>
+                        Platinum customers will join scheduled live
+                        tours of their site from this panel. It needs
+                        a real streaming provider and provider test
+                        we have not done yet — so right now nothing
+                        is streamed, and this card makes no promise
+                        of a button that works.
+                    </p>
                 </article>
 
             </section>
@@ -1006,10 +975,12 @@
             </section>
 
             <p class="demo-note">
-                Everything except videos and live-streaming is real: your
-                account, projects, photos, documents, spending records,
-                progress notes and messages all come from your own data.
-                Those two remain clearly labelled future features.
+                Honest status: your account, projects, photos, documents,
+                spending records, progress notes and messages are real
+                data you own. The two panels under "Coming Later"
+                (videos and live streaming) are future features; the
+                packages page shows proposed service levels whose fees
+                are confirmed before any purchase.
             </p>
 
         </div>
@@ -1018,28 +989,10 @@
 </div>
 
 <script>
-
-    // Honest status notes for dashboard features that are not built
-    // yet. Photos, budget, messaging and documents now show real data
-    // and link straight to the project pages.
-    const featureNotices = {
-        "Recorded Videos":
-            "Recorded walkthrough, update and inspection videos will play here. Video uploads are not connected to the backend yet.",
-        "Platinum Live Video":
-            "Live site tours need a real streaming provider and a Platinum package. Live video is planned for a later phase — nothing is being streamed right now."
-    };
-
-    const noticePanel = document.getElementById("featureNotice");
-    const noticeTitle = document.getElementById("featureNoticeTitle");
-    const noticeText = document.getElementById("featureNoticeText");
-
-    function showNotice(feature) {
-        noticeTitle.textContent = feature + " — not connected yet";
-        noticeText.textContent = featureNotices[feature] || "";
-        noticePanel.hidden = false;
-        noticePanel.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-
+    // The old "feature notice" pop-ups are gone: the planned
+    // features now live in their own clearly-labelled section
+    // ("Coming Later") instead of pretending to have buttons.
+    // This dashboard currently needs no JavaScript at all.
 </script>
 
 </body>

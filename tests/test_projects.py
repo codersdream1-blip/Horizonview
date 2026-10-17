@@ -687,7 +687,11 @@ def test_dashboard_empty_states_stay_honest(client):
     assert "No expenses recorded yet" in page
     assert "No activity yet" in page
     assert "No messages yet" in page
-    assert "Platinum Live Video" in page     # still a labelled future panel
+    # Planned panels keep their own clearly-labelled section, with no
+    # pretend buttons anywhere near them.
+    assert "Coming Later" in page
+    assert "PLANNED — NOT CONNECTED YET" in page
+    assert "Live Video Monitoring" in page
 
 
 # ---------- Documents ----------
