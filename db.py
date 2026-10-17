@@ -349,3 +349,49 @@ def get_document_by_id(document_id: int) -> dict | None:
             "SELECT * FROM project_documents WHERE id = ?", (document_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+# ---------- Correction helpers (owner can delete their own records) ----------
+
+def get_expense_by_id(expense_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM project_expenses WHERE id = ?", (expense_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_update_by_id(update_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM project_updates WHERE id = ?", (update_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def delete_expense(expense_id: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM project_expenses WHERE id = ?", (expense_id,)
+        )
+
+
+def delete_update(update_id: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM project_updates WHERE id = ?", (update_id,)
+        )
+
+
+def delete_photo(photo_id: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM project_photos WHERE id = ?", (photo_id,)
+        )
+
+
+def delete_document(document_id: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM project_documents WHERE id = ?", (document_id,)
+        )

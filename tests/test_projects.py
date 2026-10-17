@@ -788,3 +788,137 @@ def test_document_page_and_dashboard_wiring(client, tmp_path, monkeypatch):
     assert "Signed contract" in dash
     # The prototype-notice entry for documents is retired.
     assert "Document storage is not connected" not in dash
+
+
+# ---------- Correcting records (delete / re-enter) ----------
+
+def test_delete_expense_falls_totals_back(client):
+    make_logged_in(client)
+    project_id = create_project(client, budget="50000").json()["project"]["id"]
+    log_expense(client, project_id, amount="5000")
+    log_expense(client, project_id, title="Welder day rate",
+                amount="750.50", category="labour")
+
+    # Newest entry first in the ledger order (same date).
+    newest_id = db.get_expenses_for_project(project_id)[0]["id"]
+
+    # Sanity: totals before delete.
+    spent_before = client.get(f"/api/projects/{project_id}/expenses") \
+        .json()["summary"]["total_spent"]
+    assert spent_before == 5750.50
+
+    response = client.delete(f"/api/expenses/{newest_id}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_spent"] == 5000
+    assert body["remaining"] == 45000
+
+    assert len(db.get_expenses_for_project(project_id)) == 1
+
+
+def test_delete_expense_edit_amount_via_put(client):
+    make_logged_in(client)
+    project_id = create_project(client, budget="50000").json()["project"]["id"]
+    log_expense(client, project_id, amount="5000")
+    expense_id = db.get_expenses_for_project(project_id)[0]["id"]
+
+    response = client.put(f"/api/expenses/{expense_id}", json={
+        "title": "20 bags of cement", "amount_ghs": "4,375.25",
+        "category": "materials",
+    })
+    assert response.status_code == 200
+    assert response.json()["total_spent"] == 4375.25
+
+    stored = db.get_expenses_for_project(project_id)[0]
+    assert stored["amount_ghs"] == 4375.25
+    assert stored["title"] == "20 bags of cement"
+
+
+def test_delete_note_recalculates_progress(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    client.post(f"/api/projects/{project_id}/updates", json={
+        "title": "Roof at 60", "body": "Roofing structure now fully in place.",
+        "stage": "roofing", "progress_percent": "60"})
+    client.post(f"/api/projects/{project_id}/updates", json={
+        "title": "Prep at 30", "body": "Site preparation work was started.",
+        "stage": "site-clearing", "progress_percent": "30"})
+    assert db.get_project_by_id(project_id)["progress_percent"] == 60
+
+    note60 = [u for u in db.get_updates_for_project(project_id)
+              if u["progress_percent"] == 60][0]
+    response = client.delete(f"/api/updates/{note60['id']}")
+    assert response.status_code == 200
+    assert response.json()["project_progress"] == 30
+    assert db.get_project_by_id(project_id)["progress_percent"] == 30
+
+    # Deleting the remaining note resets the bar to 0.
+    last_id = db.get_updates_for_project(project_id)[0]["id"]
+    client.delete(f"/api/updates/{last_id}")
+    assert db.get_project_by_id(project_id)["progress_percent"] == 0
+
+
+def test_delete_photo_removes_file_and_blocks_serving(client, tmp_path,
+                                                      monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    upload_photo(client, project_id)
+    photo = db.get_photos_for_project(project_id)[0]
+    stored_file = tmp_path / photo["stored_path"]
+    assert stored_file.is_file()
+
+    assert client.delete(f"/api/photos/{photo['id']}").status_code == 200
+    assert not stored_file.is_file()
+    assert db.get_photos_for_project(project_id) == []
+    assert client.get(f"/api/photos/{photo['id']}").status_code == 404
+
+
+def test_delete_document_removes_file(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    upload_document(client, project_id)
+    doc = db.get_documents_for_project(project_id)[0]
+    stored_file = tmp_path / doc["stored_path"]
+    assert stored_file.is_file()
+
+    assert client.delete(f"/api/documents/{doc['id']}").status_code == 200
+    assert not stored_file.is_file()
+    assert client.get(f"/api/documents/{doc['id']}").status_code == 404
+
+
+def test_delete_ownership_strict_and_hidden(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    log_expense(client, project_id, amount="50")
+    expense_id = db.get_expenses_for_project(project_id)[0]["id"]
+
+    client.post("/api/logout")
+    assert client.delete(f"/api/expenses/{expense_id}").status_code == 401
+
+    other = dict(REGISTER_PAYLOAD, email="stranger7@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+    # 404 for a stranger: existence is never confirmed.
+    assert client.delete(f"/api/expenses/{expense_id}").status_code == 404
+    assert client.put(f"/api/expenses/{expense_id}", json={
+        "title": "Tampered", "amount_ghs": "1", "category": "other"
+    }).status_code == 404
+    assert client.delete("/api/updates/999").status_code == 404
+    assert db.get_expenses_for_project(project_id)[0]["amount_ghs"] == 50
+
+
+def test_detail_page_shows_delete_controls(client):
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    log_expense(client, project_id, amount="50")
+
+    page = client.get(f"/projects/{project_id}").text
+    assert page.count('class="row-x"') == 1
+    assert 'data-kind="expenses"' in page
+    # The two-step confirm lives in the page script, not a browser popup.
+    assert "first click arms the button" in page

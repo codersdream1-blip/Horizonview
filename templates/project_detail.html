@@ -458,6 +458,40 @@
             white-space: nowrap;
         }
 
+        /* two-step delete controls on real records */
+
+        .row-x {
+            border: 1px solid #e3c8c0;
+            background: #fff5f2;
+            color: #9b3a24;
+            border-radius: 6px;
+            font-size: 12px;
+            padding: 5px 9px;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .row-x:hover {
+            background: #9b3a24;
+            border-color: #9b3a24;
+            color: white;
+        }
+
+        .row-x.armed {
+            background: #9b3a24;
+            border-color: #9b3a24;
+            color: white;
+            font-weight: 600;
+        }
+
+        .update-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
         @media (max-width: 620px) {
             .add-update-box .grid-2 {
                 grid-template-columns: 1fr;
@@ -597,6 +631,8 @@
                     <span class="expense-title">{{ e.title }}</span>
                     <span class="cat-chip">{{ e.category_display }}</span>
                     <span class="expense-amount">{{ e.amount_display }}</span>
+                    <button class="row-x" type="button" data-kind="expenses"
+                            data-id="{{ e.id }}" aria-label="Delete expense">✕</button>
                 </div>
                 {% endfor %}
                 {% else %}
@@ -658,6 +694,8 @@
                         {{ p.caption or "Site photo" }}
                         <span>{{ p.created_display }}</span>
                         <span class="photo-meta">Original file: {{ p.original_filename }}</span>
+                        <button class="row-x" type="button" data-kind="photos"
+                                data-id="{{ p.id }}" aria-label="Delete photo">Delete photo</button>
                     </figcaption>
                 </figure>
                 {% endfor %}
@@ -714,7 +752,11 @@
                     {% endif %}
 
                     <p class="update-body">{{ u.body }}</p>
-                    <div class="update-meta">Recorded by {{ u.author_display }}</div>
+                    <div class="update-meta">
+                        <span>Recorded by {{ u.author_display }}</span>
+                        <button class="row-x" type="button" data-kind="updates"
+                                data-id="{{ u.id }}" aria-label="Delete note">Delete</button>
+                    </div>
                 </article>
                 {% endfor %}
             </section>
@@ -808,14 +850,16 @@
             {% if documents %}
             <section class="doc-list">
                 {% for d in documents %}
-                <a class="doc-row" href="{{ d.api_url }}" target="_blank" rel="noopener">
+                <div class="doc-row">
                     <span class="doc-icon">{{ '📄' if d.extension == 'pdf' else '🖼️' }}</span>
                     <span class="doc-info">
                         <strong>{{ d.description or d.original_filename }}</strong>
                         <small>{{ d.original_filename }} · {{ d.type_label }} · {{ d.created_display }}</small>
                     </span>
-                    <span class="doc-open">Open ↗</span>
-                </a>
+                    <a class="doc-open" href="{{ d.api_url }}" target="_blank" rel="noopener">Open ↗</a>
+                    <button class="row-x" type="button" data-kind="documents"
+                            data-id="{{ d.id }}" aria-label="Delete document">✕</button>
+                </div>
                 {% endfor %}
             </section>
             {% else %}
@@ -1111,6 +1155,50 @@
                     "Could not reach the HorizonView server. Make sure it is running.";
             } finally {
                 docButton.disabled = false;
+            }
+        });
+
+        // Two-step delete: first click arms the button ("Delete?"),
+        // second click actually sends the DELETE request. No surprise
+        // browser popups; the page reloads from the database after.
+        document.addEventListener("click", async function (event) {
+            const button = event.target.closest(".row-x");
+            if (!button) return;
+
+            if (!button.classList.contains("armed")) {
+                button.classList.add("armed");
+                button.dataset.confirmText = button.textContent;
+                button.textContent = button.dataset.confirmText + "?";
+                setTimeout(() => {
+                    if (button.isConnected) {
+                        button.classList.remove("armed");
+                        button.textContent = button.dataset.confirmText;
+                    }
+                }, 3500);
+                return;
+            }
+
+            button.disabled = true;
+            const { kind, id } = button.dataset;
+            try {
+                const response = await fetch(`/api/${kind}/${id}`, {
+                    method: "DELETE"
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+                if (response.ok) {
+                    window.location.reload();
+                    return;
+                }
+
+                button.textContent = "Failed";
+            } catch (networkError) {
+                button.textContent = "Offline";
+            } finally {
+                button.disabled = false;
             }
         });
     </script>
