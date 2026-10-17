@@ -183,3 +183,72 @@ def test_old_dashboard_bookmark_redirects(client):
 
 def test_me_is_anonymous_without_login(client):
     assert client.get("/api/me").json() == {"logged_in": False}
+
+
+# ---------- Brute-force protection ----------
+
+def try_login(client, email, password):
+    return client.post("/api/login", json={"email": email, "password": password})
+
+
+def test_five_failures_block_sixth_even_with_correct_password(client):
+    payload = dict(REGISTER_PAYLOAD, email="lockme@example.com")
+    client.post("/api/register", json=payload)
+
+    for _ in range(5):
+        response = try_login(client, payload["email"], "definitely-wrong")
+        assert response.status_code == 401
+
+    # Sixth attempt: the CORRECT password is refused too — the lock
+    # happens before any password work, so an attacker cannot use the
+    # block itself as an oracle for the right password.
+    response = try_login(client, payload["email"], payload["password"])
+    assert response.status_code == 429
+    assert "Too many unsuccessful attempts" in response.json()["message"]
+
+
+def test_failed_attempts_count_unknown_emails_too(client):
+    for _ in range(5):
+        response = try_login(client, "ghost@example.com", "whatever99")
+        assert response.status_code == 401
+    assert try_login(client, "ghost@example.com", "whatever99").status_code == 429
+
+
+def test_correct_login_resets_the_failure_window(client):
+    payload = dict(REGISTER_PAYLOAD, email="resetme@example.com")
+    client.post("/api/register", json=payload)
+
+    try_login(client, payload["email"], "bad-guess-1")
+    try_login(client, payload["email"], "bad-guess-2")
+    assert try_login(client, payload["email"], payload["password"]).status_code == 200
+
+    # Window was cleared by the success: two more failures then a
+    # correct login still works (would be 4 attempts total otherwise).
+    try_login(client, payload["email"], "bad-guess-3")
+    try_login(client, payload["email"], "bad-guess-4")
+    assert try_login(client, payload["email"], payload["password"]).status_code == 200
+
+
+def test_other_accounts_are_not_blocked_by_one_locked_pair(client):
+    locked = dict(REGISTER_PAYLOAD, email="locked-account@example.com")
+    other = dict(REGISTER_PAYLOAD, email="fine-account@example.com")
+    for payload in (locked, other):
+        assert client.post("/api/register", json=payload).status_code == 201
+
+    for _ in range(5):
+        try_login(client, locked["email"], "wrong")
+    assert try_login(client, locked["email"], locked["password"]).status_code == 429
+
+    # Same source IP, different email: untouched.
+    assert try_login(client, other["email"], other["password"]).status_code == 200
+
+
+def test_registers_from_one_source_are_capped(client):
+    for i in range(10):
+        payload = dict(REGISTER_PAYLOAD, email=f"batcher{i}@example.com")
+        assert client.post("/api/register", json=payload).status_code == 201
+
+    eleventh = dict(REGISTER_PAYLOAD, email="batcher10@example.com")
+    response = client.post("/api/register", json=eleventh)
+    assert response.status_code == 429
+    assert "Too many accounts" in response.json()["message"]

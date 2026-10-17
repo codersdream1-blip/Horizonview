@@ -16,6 +16,8 @@ Security notes (read these, they matter):
 
 import re
 import secrets
+import time
+import threading
 
 import bcrypt
 from fastapi import APIRouter, Request
@@ -24,6 +26,70 @@ from fastapi.responses import JSONResponse
 import db
 
 router = APIRouter(prefix="/api", tags=["auth"])
+
+# ---------- Attempt rate limiting (brute-force protection) ----------
+#
+# Fixed windows held in memory. Adequate for this stage; note for the
+# future: multi-process deployments need a shared store (e.g. Redis).
+
+LOGIN_WINDOW_SECONDS = 15 * 60   # failures counted per 15 minutes
+MAX_LOGIN_FAILURES = 5           # per (IP, email) pair; at the sixth,
+                                 # login is refused even with correct
+                                 # credentials until the window clears
+REGISTER_WINDOW_SECONDS = 60 * 60
+MAX_REGISTRATIONS_PER_WINDOW = 10  # per IP, deter bulk sign-up spam
+
+_login_failures: dict[str, list[float]] = {}
+_register_attempts: dict[str, list[float]] = {}
+_limiter_lock = threading.Lock()
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _prune_in_window(window: list[float], now: float, limit_seconds: int) -> list[float]:
+    return [ts for ts in window if now - ts <= limit_seconds]
+
+
+def login_is_blocked(ip: str, email: str) -> bool:
+    key = f"{ip}|{email}"
+    with _limiter_lock:
+        _login_failures[key] = _prune_in_window(
+            _login_failures.get(key, []), time.monotonic(),
+            LOGIN_WINDOW_SECONDS,
+        )
+        return len(_login_failures[key]) >= MAX_LOGIN_FAILURES
+
+
+def record_login_failure(ip: str, email: str) -> None:
+    key = f"{ip}|{email}"
+    with _limiter_lock:
+        _login_failures.setdefault(key, []).append(time.monotonic())
+
+
+def clear_login_failures(ip: str, email: str) -> None:
+    _login_failures.pop(f"{ip}|{email}", None)
+
+
+def register_is_blocked(ip: str) -> bool:
+    with _limiter_lock:
+        _register_attempts[ip] = _prune_in_window(
+            _register_attempts.get(ip, []), time.monotonic(),
+            REGISTER_WINDOW_SECONDS,
+        )
+        return len(_register_attempts[ip]) >= MAX_REGISTRATIONS_PER_WINDOW
+
+
+def record_registration(ip: str) -> None:
+    with _limiter_lock:
+        _register_attempts.setdefault(ip, []).append(time.monotonic())
+
+
+def reset_rate_limits() -> None:
+    """Reset the in-memory windows (used by the test suite)."""
+    _login_failures.clear()
+    _register_attempts.clear()
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PHONE_PATTERN = re.compile(r"^[\d\s()+-]{5,30}$")
@@ -95,6 +161,17 @@ async def register(request: Request):
     if errors:
         return bad_request("Please fix the highlighted fields.", errors)
 
+    ip = _client_ip(request)
+    if register_is_blocked(ip):
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Too many accounts created from this network "
+                           "recently. Please try again later.",
+            },
+            status_code=429,
+        )
+
     email = str(data["email"]).strip().lower()
 
     if db.get_user_by_email(email):
@@ -108,6 +185,7 @@ async def register(request: Request):
         phone=str(data["phone"]).strip(),
         password_hash=hash_password(str(data["password"])),
     )
+    record_registration(ip)
 
     return JSONResponse(
         {"ok": True, "message": "Account created. You can log in now."},
@@ -131,22 +209,42 @@ async def login(request: Request):
     if not email or not password:
         return bad_request("Enter your email address and password.")
 
+    ip = _client_ip(request)
+
+    # Brute-force guard: checked BEFORE credential work, so an attacker
+    # cannot even burn hashing cycles (and a blocked correct password
+    # still counts — the attacker cannot tell).
+    if login_is_blocked(ip, email):
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Too many unsuccessful attempts. Please try "
+                           "again in about 15 minutes.",
+            },
+            status_code=429,
+        )
+
     user = db.get_user_by_email(email)
 
     if user is None:
         # Burn the same hashing time as a real check so response
         # timing does not reveal that this email is unknown.
         verify_password(password, _DUMMY_HASH)
+        record_login_failure(ip, email)
         return JSONResponse(
             {"ok": False, "message": "Email or password is incorrect."},
             status_code=401,
         )
 
     if not verify_password(password, user["password_hash"]):
+        record_login_failure(ip, email)
         return JSONResponse(
             {"ok": False, "message": "Email or password is incorrect."},
             status_code=401,
         )
+
+    # Success resets the failure window for this (IP, email) pair.
+    clear_login_failures(ip, email)
 
     # Signed session cookie (set up in main.py).
     request.session["user_id"] = user["id"]
