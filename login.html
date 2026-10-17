@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | HorizonView</title>
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
     <link rel="stylesheet" href="css/style.css">
     <style>
         .login-section {
@@ -146,7 +147,7 @@
             </form>
 
             <div class="login-links">
-                <p><a href="#" id="forgotPassword">Forgot your password?</a></p>
+                <p><a href="forgot-password.html">Forgot your password?</a></p>
                 <p>New to HorizonView? <a href="register.html">Create an account</a></p>
             </div>
         </section>
@@ -197,12 +198,8 @@
             }
         });
 
-        document.getElementById("forgotPassword").addEventListener("click", function(event) {
-            event.preventDefault();
-
-            loginMessage.textContent =
-                "Password recovery needs email support. We will add it in a later phase.";
-        });
+        // "Forgot your password?" is now a real page (see the link
+        // above); no stub needed here.
     </script>
 
 </body>

@@ -151,12 +151,19 @@ padding: 120px 7%;
 display: flex;
 align-items: center;
 
+/* Decorative gradient only — no stock photo is used, so nothing
+   here pretends to be a real building or a real HorizonView site.
+   A CSS-only backdrop keeps the page honest and fast. */
 background:
-    linear-gradient(
-        rgba(20, 48, 35, 0.82),
-        rgba(20, 48, 35, 0.82)
+    radial-gradient(
+        1200px 600px at 78% 8%,
+        rgba(240, 180, 41, 0.28),
+        rgba(240, 180, 41, 0) 60%
     ),
-    url("../images/hero.jpg");
+    linear-gradient(
+        rgba(20, 48, 35, 0.96),
+        rgba(28, 66, 47, 0.92)
+    );
 
 background-size: cover;
 background-position: center;
