@@ -40,6 +40,78 @@
             margin: 12px 0 6px;
         }
 
+        /* Project hero: same dark band language as the dashboard */
+        /* so the two pages read as one product. */
+
+        .project-hero {
+            background: #173d2b;
+            color: white;
+            border-radius: 14px;
+            padding: 26px 28px;
+            margin-bottom: 22px;
+        }
+
+        .project-hero .hero-tag {
+            display: inline-block;
+            background: #2a5b40;
+            color: #cfe6d6;
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .project-hero h1 {
+            font-size: 27px;
+            margin: 0 0 4px;
+            color: white;
+        }
+
+        .project-hero .hero-location {
+            color: #c4d7ca;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 8px 12px;
+            background: #d8eee0;
+            color: #1c6137;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .project-hero .progress-labels {
+            color: #e3eee6;
+        }
+
+        .project-hero .progress-track {
+            background: #486651;
+        }
+
+        .project-hero .progress-fill {
+            background: #a8d5b4;
+        }
+
+        /* Honesty badge, identical to the dashboard's "Coming Later"
+           language: a planned feature is labelled before its prose. */
+
+        .plan-label {
+            display: inline-block;
+            background: #f3ede0;
+            color: #7a5b14;
+            border-radius: 5px;
+            padding: 6px 9px;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            margin: 2px 0 10px;
+        }
+
         .media-tag {
             display: inline-block;
             background: #e6eee8;
@@ -536,15 +608,24 @@
     <main class="detail-wrap">
         <a href="/dashboard" class="back-link">← Back to dashboard</a>
 
-        <section class="detail-card">
-            <span class="media-tag">{{ project.type_display }}</span>
+        <section class="project-hero">
+            <span class="hero-tag">{{ project.type_display }}</span>
             <h1>{{ project.name }}</h1>
+            <p class="hero-location">{{ project.location }}</p>
 
-            <div class="detail-row">
-                <span class="label">Location</span>
-                <span class="value">{{ project.location }}</span>
+            <div class="project-progress">
+                <div class="progress-labels">
+                    <span class="status-pill">{{ project.status_display }}</span>
+                    <strong>{{ project.progress_percent }}%</strong>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill"
+                         style="width: {{ project.progress_percent }}%;"></div>
+                </div>
             </div>
+        </section>
 
+        <section class="detail-card">
             <div class="detail-row">
                 <span class="label">Status</span>
                 <span class="value">{{ project.status_display }}</span>
@@ -577,20 +658,9 @@
             </div>
             {% endif %}
 
-            <h2 class="progress-heading">Construction progress</h2>
-
-            <div class="project-progress">
-                <div class="progress-labels">
-                    <span>{{ project.status_display }}</span>
-                    <strong>{{ project.progress_percent }}%</strong>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill"
-                         style="width: {{ project.progress_percent }}%; background-color: #43815a;"></div>
-                </div>
-            </div>
-
             <h2 class="progress-heading">Budget &amp; spending</h2>
+
+            <span class="plan-label">VERIFIED RECEIPTS &amp; PAYMENT RECORDS — COMING LATER</span>
 
             {% if "budget_display" in expense_summary %}
             <section class="budget-panel">
@@ -730,10 +800,14 @@
             </section>
 
             <div class="pending-note">
-                Site video walkthroughs and official payment records are
-                the last parts still on the roadmap. Everything else on
-                this page — notes, photos, budget, messages and documents
-                — is real data you have recorded.
+                <strong style="display:block; margin-bottom:6px;">
+                    Still on the roadmap — so you are never misled online:
+                </strong>
+                Video site walkthroughs (recorded, then live for Platinum)
+                and verified receipts against real payments are the last
+                features not yet connected. Everything else on this page —
+                notes, photos, budget ledger, messages and documents — is
+                real data you have recorded, and only you can see it.
             </div>
 
             <h2 class="progress-heading">Progress notes</h2>
@@ -811,6 +885,8 @@
             </section>
 
             <h2 class="progress-heading">Messages</h2>
+
+            <span class="plan-label">REPLIES FROM THE HORIZONVIEW TEAM — COMING LATER</span>
 
             {% if messages %}
             <section class="msg-thread">
