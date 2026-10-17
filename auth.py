@@ -14,10 +14,12 @@ Security notes (read these, they matter):
   improves user experience; it is never a security boundary.
 """
 
+import hashlib
 import re
 import secrets
 import time
 import threading
+from datetime import datetime, timezone
 
 import bcrypt
 from fastapi import APIRouter, Request
@@ -39,8 +41,18 @@ MAX_LOGIN_FAILURES = 5           # per (IP, email) pair; at the sixth,
 REGISTER_WINDOW_SECONDS = 60 * 60
 MAX_REGISTRATIONS_PER_WINDOW = 10  # per IP, deter bulk sign-up spam
 
+# Password-reset windows: modest, because the endpoints never reveal
+# whether an email exists — they are throttled to stop someone turning
+# them into a spam channel or a (useless) probe.
+FORGOT_WINDOW_SECONDS = 15 * 60
+MAX_FORGOT_REQUESTS_PER_WINDOW = 5   # per IP
+RESET_WINDOW_SECONDS = 60 * 60
+MAX_RESET_ATTEMPTS_PER_WINDOW = 10   # failed token guesses per IP
+
 _login_failures: dict[str, list[float]] = {}
 _register_attempts: dict[str, list[float]] = {}
+_forgot_requests: dict[str, list[float]] = {}
+_reset_attempts: dict[str, list[float]] = {}
 _limiter_lock = threading.Lock()
 
 
@@ -81,6 +93,32 @@ def register_is_blocked(ip: str) -> bool:
         return len(_register_attempts[ip]) >= MAX_REGISTRATIONS_PER_WINDOW
 
 
+def forgot_is_blocked(ip: str) -> bool:
+    with _limiter_lock:
+        _forgot_requests[ip] = _prune_in_window(
+            _forgot_requests.get(ip, []), time.monotonic(),
+            FORGOT_WINDOW_SECONDS,
+        )
+        return len(_forgot_requests[ip]) >= MAX_FORGOT_REQUESTS_PER_WINDOW
+
+
+def record_forgot_request(ip: str) -> None:
+    _forgot_requests.setdefault(ip, []).append(time.monotonic())
+
+
+def reset_is_blocked(ip: str) -> bool:
+    with _limiter_lock:
+        _reset_attempts[ip] = _prune_in_window(
+            _reset_attempts.get(ip, []), time.monotonic(),
+            RESET_WINDOW_SECONDS,
+        )
+        return len(_reset_attempts[ip]) >= MAX_RESET_ATTEMPTS_PER_WINDOW
+
+
+def record_failed_reset(ip: str) -> None:
+    _reset_attempts.setdefault(ip, []).append(time.monotonic())
+
+
 def record_registration(ip: str) -> None:
     with _limiter_lock:
         _register_attempts.setdefault(ip, []).append(time.monotonic())
@@ -90,6 +128,8 @@ def reset_rate_limits() -> None:
     """Reset the in-memory windows (used by the test suite)."""
     _login_failures.clear()
     _register_attempts.clear()
+    _forgot_requests.clear()
+    _reset_attempts.clear()
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PHONE_PATTERN = re.compile(r"^[\d\s()+-]{5,30}$")
@@ -303,6 +343,140 @@ async def login(request: Request):
 async def logout(request: Request):
     request.session.clear()
     return {"ok": True, "message": "Logged out."}
+
+
+# ---------- Password reset ----------
+#
+# HorizonView has no email service in this stage of the project, so
+# the flow is intentionally honest about that:
+#
+#   1. The user fills in "Forgot your password?" → this endpoint only
+#      RECORDS a request (and replies the same thing whether or not
+#      the email exists, so nobody can use it to probe accounts).
+#   2. The HorizonView administrator verifies the person's identity
+#      out of band (e.g. a phone call) and mints a single-use,
+#      60-minute reset link with create_reset_link.py on the server.
+#   3. The user's browser POSTs the token here to set a new password.
+#
+# Tokens are stored as SHA-256 hashes and can be consumed exactly
+# once. No HTTP endpoint ever reveals a token.
+
+RESET_TOKEN_MINUTES = 60
+
+
+def _generic_forgot_reply() -> JSONResponse:
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Thank you. If this email has a HorizonView "
+                       "account, your request has been recorded. Our "
+                       "administrator will verify your identity and "
+                       "sort out a reset link with you.",
+        }
+    )
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return bad_request("Send the request as JSON data.")
+    if not isinstance(data, dict):
+        return bad_request("Send the request as JSON data.")
+
+    email = str(data.get("email", "")).strip().lower()
+    if not email or len(email) > 254 or not EMAIL_PATTERN.match(email):
+        return bad_request("Please enter a valid email address.")
+
+    ip = _client_ip(request)
+    if forgot_is_blocked(ip):
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Too many requests from this network "
+                           "recently. Please try again later.",
+            },
+            status_code=429,
+        )
+    record_forgot_request(ip)
+
+    user = db.get_user_by_email(email)
+    if user is None:
+        # Same reply as for a real account: the response must never
+        # confirm whether a given email is registered.
+        return _generic_forgot_reply()
+
+    # Genuinely record the request so the administrator can act on it
+    # (and so the reply above is the truth). The token for the actual
+    # reset link is minted later, on the server, only after the
+    # identity is verified out of band.
+    db.record_reset_request(email, ip)
+    return _generic_forgot_reply()
+
+
+@router.post("/reset-password")
+async def reset_password(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return bad_request("Send the request as JSON data.")
+    if not isinstance(data, dict):
+        return bad_request("Send the request as JSON data.")
+
+    token = str(data.get("token", ""))
+    new_password = str(data.get("new_password", ""))
+
+    if len(new_password) < 8 or len(new_password) > 100:
+        return bad_request(
+            "Your new password must be between 8 and 100 characters."
+        )
+    if not token:
+        return bad_request("This page needs a valid reset link.")
+
+    ip = _client_ip(request)
+    if reset_is_blocked(ip):
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Too many attempts from this network "
+                           "recently. Please try again later.",
+            },
+            status_code=429,
+        )
+
+    # Tokens are stored hashed, so failed lookups cost nothing and a
+    # leaked database cannot yield working links.
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    record = db.get_password_reset_by_hash(token_hash)
+
+    now = datetime.now(timezone.utc)
+    expired = record and (
+        datetime.fromisoformat(record["expires_at"]) <= now
+        or record["used_at"] is not None
+    )
+    if not record or expired:
+        record_failed_reset(ip)
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "This reset link is invalid or has expired. "
+                           "Ask the HorizonView administrator for a "
+                           "fresh one.",
+            },
+            status_code=400,
+        )
+
+    db.set_user_password(record["user_id"], hash_password(new_password))
+    db.mark_password_reset_used(record["id"])
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Password changed. You can now log in with your "
+                       "new password.",
+        }
+    )
 
 
 @router.get("/me")

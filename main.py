@@ -81,6 +81,16 @@ def home():
     return FileResponse(BASE_DIR / "index.html", media_type="text/html")
 
 
+# The browser asks for /favicon.ico automatically. Redirect it to the
+# real icon. This must be registered BEFORE the /{page_name} route
+# below, which would otherwise answer first with 404.
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return RedirectResponse("/images/favicon.svg", status_code=307)
+
+
 # /dashboard is user-specific: it must never be served without a
 # logged-in session, so it is rendered from a template instead of
 # the static-page whitelist.
@@ -308,6 +318,8 @@ PAGES = {
     "register.html",
     "packages.html",
     "start-project.html",
+    "forgot-password.html",
+    "reset-password.html",
 }
 
 
@@ -325,3 +337,4 @@ def page(page_name: str):
 
 app.mount("/css", StaticFiles(directory=BASE_DIR / "css"), name="css")
 app.mount("/js", StaticFiles(directory=BASE_DIR / "js"), name="js")
+app.mount("/images", StaticFiles(directory=BASE_DIR / "images"), name="images")

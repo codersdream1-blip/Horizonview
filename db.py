@@ -102,6 +102,29 @@ CREATE TABLE IF NOT EXISTS project_documents (
     description TEXT,
     created_at TEXT NOT NULL
 );
+-- Reset requests from the "Forgot your password?" page. In this
+-- stage there is no email service: the administrator sees the pending
+-- requests here (create_reset_link.py) and verifies the person's
+-- identity out of band before minting a link.
+CREATE TABLE IF NOT EXISTS password_reset_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    requested_ip TEXT
+);
+
+-- Password reset requests. A single-use token is stored ONLY as a
+-- SHA-256 hash: even a stolen database backup cannot be replayed as
+-- a reset link. expires_at bounds the window in which the link works.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    token_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    created_at TEXT NOT NULL,
+    requested_ip TEXT
+);
 """
 
 
@@ -394,4 +417,77 @@ def delete_document(document_id: int) -> None:
     with get_connection() as conn:
         conn.execute(
             "DELETE FROM project_documents WHERE id = ?", (document_id,)
+        )
+
+
+# ---------- Password reset (single-use hashed tokens) ----------
+
+def record_reset_request(email: str, requested_ip: str) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO password_reset_requests "
+            "(email, created_at, requested_ip) VALUES (?, ?, ?)",
+            (email, now, requested_ip),
+        )
+        return cursor.lastrowid
+
+
+def list_reset_requests(limit: int = 20) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM password_reset_requests "
+            "ORDER BY created_at DESC, id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def create_password_reset(
+    user_id: int, token_hash: str, expires_at: str, requested_ip: str
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO password_reset_tokens "
+            "(user_id, token_hash, expires_at, created_at, requested_ip) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, token_hash, expires_at, now, requested_ip),
+        )
+        return cursor.lastrowid
+
+
+def get_password_reset_by_hash(token_hash: str) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM password_reset_tokens WHERE token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def count_unused_resets_for_user(user_id: int) -> int:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM password_reset_tokens "
+            "WHERE user_id = ? AND used_at IS NULL",
+            (user_id,),
+        ).fetchone()
+        return row["n"]
+
+
+def mark_password_reset_used(reset_id: int) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE password_reset_tokens SET used_at = ? WHERE id = ?",
+            (now, reset_id),
+        )
+
+
+def set_user_password(user_id: int, password_hash: str) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (password_hash, user_id),
         )
