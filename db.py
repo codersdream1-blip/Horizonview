@@ -7,7 +7,7 @@ PostgreSQL without changing this file's function names.
 """
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # The database file is created next to this file. It is listed in
@@ -21,6 +21,14 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE,
     phone TEXT NOT NULL,
     password_hash TEXT NOT NULL,
+    -- Administrator identity. 0/1 flag, DEFAULT OFF for everyone.
+    -- IMPORTANT: no web route grants admin powers from this flag yet.
+    -- It exists so a future (locally-bound or strongly protected)
+    -- admin interface can have identity + access control to build on,
+    -- decided in advance rather than improvised. Promotion happens
+    -- only through the local CLI tool (admin_tool.py) by the person
+    -- operating the server.
+    is_admin INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
 
@@ -150,6 +158,24 @@ def get_connection() -> sqlite3.Connection:
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+    ensure_admin_column()
+
+
+def ensure_admin_column() -> None:
+    """Upgrade older databases: add users.is_admin if missing.
+
+    CREATE TABLE IF NOT EXISTS never changes an existing table, so
+    databases created before the admin flag need this one-time ALTER.
+    """
+    with get_connection() as conn:
+        columns = [
+            row["name"] for row in
+            conn.execute("PRAGMA table_info(users)").fetchall()
+        ]
+        if "is_admin" not in columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"
+            )
 
 
 def create_user(full_name: str, email: str, phone: str, password_hash: str) -> int:
@@ -177,6 +203,32 @@ def get_user_by_id(user_id: int) -> dict | None:
             "SELECT * FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+def set_admin_flag(user_id: int, is_admin: bool) -> None:
+    """Grant or remove the administrator identity. Local CLI only:
+    no HTTP endpoint ever flips this flag."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE users SET is_admin = ? WHERE id = ?",
+            (1 if is_admin else 0, user_id),
+        )
+
+
+def list_users() -> list[dict]:
+    """Account overview for the local admin tool, one row per user,
+    with live counts so the operator sees real workload at a glance."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT u.id, u.full_name, u.email, u.phone, u.is_admin, "
+            "u.created_at, "
+            "(SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) "
+            "  AS project_count, "
+            "(SELECT COUNT(*) FROM user_sessions s "
+            "  WHERE s.user_id = u.id) AS active_sessions "
+            "FROM users u ORDER BY u.created_at DESC, u.id DESC"
+        ).fetchall()
+        return [dict(row) for row in rows]
 
 
 def create_project(
@@ -526,6 +578,17 @@ def session_is_active(sid: str) -> bool:
         return row is not None
 
 
+def sessions_for_user(user_id: int) -> list[dict]:
+    """Active session registry rows for one account (admin tool)."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT sid, created_at FROM user_sessions "
+            "WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
 def revoke_session(sid: str) -> None:
     with get_connection() as conn:
         conn.execute("DELETE FROM user_sessions WHERE sid = ?", (sid,))
@@ -537,3 +600,22 @@ def revoke_all_sessions(user_id: int) -> None:
         conn.execute(
             "DELETE FROM user_sessions WHERE user_id = ?", (user_id,)
         )
+
+
+def prune_expired_sessions(max_age_days: int = 8) -> int:
+    """Delete registry rows whose browser cookie must have expired.
+
+    Session cookies carry max_age = 7 days, so a row older than that
+    can never again match a working cookie. A day of slack absorbs
+    clock differences. Called on each login: one cheap DELETE,
+    without needing a background scheduler in this stage.
+    Returns the number of rows removed.
+    """
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    ).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM user_sessions WHERE created_at <= ?", (cutoff,)
+        )
+        return cursor.rowcount
