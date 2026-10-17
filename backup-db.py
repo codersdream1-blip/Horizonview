@@ -11,6 +11,16 @@ Why it copies uploads too: the database only remembers WHERE each
 uploaded file lives — the files themselves sit in uploads/ on disk.
 A database-only backup would restore records pointing at empty air.
 One backup folder always holds BOTH halves.
+
+Second location (the honest upgrade over one machine):
+
+    .\\venv\\Scripts\\python.exe backup-db.py --copy-to D:\\HorizonBackups
+
+mirrors the +verified+ backup into the second folder (same folder
+name on both sides) — an external drive today, or a OneDrive/Dropbox
+folder for automatic across-machine protection. If the mirror fails
+(unplugged drive, missing network path), the command says so loudly
+and exits non-zero instead of pretending.
 """
 
 import sys

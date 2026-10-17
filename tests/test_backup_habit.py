@@ -104,3 +104,115 @@ def test_time_parsing_rejects_nonsense():
         sched.parse_time("25:00")
     with pytest.raises(SystemExit):
         sched.parse_time("next Tuesday")
+
+
+# ---------- second location ----------
+
+def test_registered_action_can_carry_the_second_location():
+    action = sched.backup_action_string(
+        copy_to=r"D:\HorizonBackups",
+        python_exe="C:/py/python.exe", backup_script="C:/b.py")
+    assert action == ('"C:/py/python.exe" "C:/b.py" --keep 14 '
+                      '--copy-to "D:\\HorizonBackups"')
+
+
+def test_registered_action_without_copy_to_stays_clean():
+    action = sched.backup_action_string(
+        python_exe="C:/py/python.exe", backup_script="C:/b.py")
+    assert "--copy-to" not in action
+
+
+def test_do_backup_mirrors_the_verified_folder(fresh_db, tmp_path, capsys):
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    (uploads / "receipt.png").write_bytes(b"PNG" * 40)
+    primary = tmp_path / "backups"
+    secondary = tmp_path / "second" / "HorizonBackups"
+
+    exit_code = admin_tool.do_backup(
+        dest_root=primary, upload_dir=uploads, copy_to=secondary)
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "Second copy    : PASS" in out
+    # same folder name on both sides, same content
+    local = next(p.name for p in primary.glob("backup-*") if p.is_dir())
+    mirror = secondary / local
+    assert mirror.is_dir()
+    assert admin_tool.file_set(mirror) == admin_tool.file_set(
+        primary / local)
+    log_text = (primary / "backup.log").read_text("utf-8")
+    assert "SECONDARY-OK" in log_text
+
+
+def test_failed_mirror_never_passes_silently(fresh_db, tmp_path, capsys):
+    """A second location that could not be written cannot be faked:
+    the run says SECONDARY-FAIL and exits non-zero, while the local
+    backup stays sound."""
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    (uploads / "receipt.png").write_bytes(b"PNG")
+    primary = tmp_path / "backups"
+    broken_second = tmp_path / "a-file-named-like-a-path"
+    broken_second.write_text("not a folder")  # copytree must fail here
+
+    exit_code = admin_tool.do_backup(
+        dest_root=primary, upload_dir=uploads, copy_to=broken_second)
+
+    assert exit_code == 1
+    out = capsys.readouterr().out
+    assert "Verification   : PASS" in out       # local still sound
+    assert "Second copy    : FAIL" in out
+    log_text = (primary / "backup.log").read_text("utf-8")
+    assert "SECONDARY-FAIL" in log_text
+    assert "SECONDARY-OK" not in log_text
+
+
+def test_guard_branch_skips_mirror_when_primary_failed(tmp_path):
+    """Directly exercise the primary-failed guard with a monkeypatch,
+    without contorting a healthy run into failing."""
+    from unittest.mock import patch
+
+    calls = []
+    with patch.object(admin_tool, "mirror_to_secondary",
+                      side_effect=lambda folder, target: calls.append(
+                          (folder, target)) or {"ok": True}):
+        with patch.object(admin_tool, "verify_backup",
+                          return_value={
+                              "ok": False, "integrity": "pretend-corrupt",
+                              "file_count": 0, "missing_files": [],
+                              "unexpected_files": []}):
+            db_ok_path = tmp_path / "live.db"
+            db_ok_path.write_bytes(b"placeholder")  # exists, so no abort
+
+            old_init = db.init_db
+            db.init_db = lambda: None
+            try:
+                exit_code = admin_tool.do_backup(
+                    dest_root=tmp_path / "backups",
+                    upload_dir=tmp_path / "uploads",
+                    copy_to=tmp_path / "second")
+            finally:
+                db.init_db = old_init
+
+    assert exit_code == 1
+    assert calls == []  # the broken backup was never copied anywhere
+
+
+def test_secondary_slot_is_pruned_like_the_primary(fresh_db, tmp_path,
+                                                   capsys):
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    primary = tmp_path / "backups"
+    secondary = tmp_path / "second"
+    seeds = ["backup-20200101-000000", "backup-20200102-000000"]
+    for name in seeds:
+        (secondary / name).mkdir(parents=True)
+
+    admin_tool.do_backup(dest_root=primary, upload_dir=uploads,
+                         copy_to=secondary, keep=2)
+
+    names = [p.name for p in secondary.iterdir()]
+    assert "backup-20200101-000000" not in names              # pruned
+    assert "backup-20200102-000000" in names   # newer seed survives
+    assert len([n for n in names if n.startswith("backup-")]) == 2

@@ -30,16 +30,20 @@ TASK_NAME = "HorizonView daily backup"
 
 def backup_action_string(python_exe: str = str(PYTHON_EXE),
                          backup_script: str = str(BACKUP_SCRIPT),
-                         keep: int = DEFAULT_KEEP) -> str:
+                         keep: int = DEFAULT_KEEP,
+                         copy_to: str | None = None) -> str:
     """What the scheduler runs each night. Quoted because this
     project's folder contains spaces."""
-    return f'"{python_exe}" "{backup_script}" --keep {keep}'
+    action = f'"{python_exe}" "{backup_script}" --keep {keep}'
+    if copy_to:
+        action += f' --copy-to "{copy_to}"'
+    return action
 
 
 def schtasks_create_command(time: str = DEFAULT_TIME,
                             task_name: str = TASK_NAME,
                             **kwargs) -> list[str]:
-    return [
+    argv = [
         "schtasks", "/Create",
         "/tn", task_name,
         "/sc", "DAILY",
@@ -47,11 +51,18 @@ def schtasks_create_command(time: str = DEFAULT_TIME,
         "/tr", backup_action_string(**kwargs),
         "/f",  # replace any previous version of the same task
     ]
+    return argv
 
 
 def schtasks_remove_command(task_name: str = TASK_NAME) -> list[str]:
     return ["schtasks", "/Delete", "/tn", task_name, "/f"]
 
+
+def run_command(argv: list[str]) -> tuple[int, str]:
+    result = subprocess.run(
+        argv, capture_output=True, text=True, check=False)
+    output = (result.stdout or "") + (result.stderr or "")
+    return result.returncode, output.strip()
 
 def run_command(argv: list[str]) -> tuple[int, str]:
     result = subprocess.run(
@@ -95,6 +106,10 @@ def main() -> int:
     parser.add_argument("--keep", type=int, default=DEFAULT_KEEP,
                         help=f"how many backups to keep (default "
                              f"{DEFAULT_KEEP})")
+    parser.add_argument(
+        "--copy-to", default=None, metavar="FOLDER",
+        help="the nightly task also mirrors every backup into this "
+             "second location (other drive or cloud-synced folder)")
     args = parser.parse_args()
 
     if not PYTHON_EXE.exists():
@@ -108,7 +123,8 @@ def main() -> int:
         return code
 
     time = parse_time(args.time)
-    argv = schtasks_create_command(time=time, keep=args.keep)
+    argv = schtasks_create_command(time=time, keep=args.keep,
+                                   copy_to=args.copy_to)
     print("Registering nightly backup task:")
     print("  " + " ".join(argv[1:]))
     code, output = run_command(argv)

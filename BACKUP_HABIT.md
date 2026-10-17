@@ -52,15 +52,36 @@ Each backup folder's `MANIFEST.txt` has the same four steps:
 
 Then take a fresh backup, since the restored state is now the newest.
 
+## Second location: the honest upgrade (built in)
+
+```
+.\venv\Scripts\python.exe backup-db.py --copy-to D:\HorizonBackups
+.\venv\Scripts\python.exe schedule_backup.py --copy-to D:\HorizonBackups
+```
+
+With `--copy-to`, every VERIFIED backup is mirrored into the second
+folder under the same folder name (never an unverified one), and the
+nightly task can carry the flag. Point it at:
+
+- an **external drive** — a second disk survives a dead internal drive
+- a **cloud-synced folder** (OneDrive / Dropbox / Google Drive) — the
+  copy also lives on the provider's servers, so theft, virus or a
+  disk failure of this machine can no longer take everything
+
+If the mirror fails (drive unplugged, network path missing) the run
+says so and `backup.log` records `SECONDARY-FAIL` — the local backup
+is still sound, but the gap is never hidden.
+
 ## What this does NOT promise (honesty notes)
 
-- Backups live on the **same machine** as the data. A virus, theft or
-  disk failure that destroys the data can destroy the backups too.
-  The honest upgrade later: copy the newest backup folder to a second
-  location on a different device (external drive / cloud folder).
-- The nightly task on a dev Windows machine runs only while that
+- The nightly task on a dev Windows machine runs only while this
   machine is on and you are logged in. If it was off at 20:00, that
-  night simply has no backup — check `backup.log`.
+  night simply has no backup — `backup.log` shows the gap.
+- A folder on the SAME disk is not a second location — it only
+  survives accidental deletion, not the machine itself.
+- Cloud folders protect across machines, but they sync from this
+  machine's account; the account itself needs its own strong
+  password and, ideally, two-factor authentication.
 - Files are copied as they are; nothing is encrypted. Backups inherit
   the same privacy handling as the live data (never committed, never
   shared).
