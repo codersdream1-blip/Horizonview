@@ -23,6 +23,10 @@ What the toolkit does today:
                                 file into backups/<timestamp>/
     list-backups                show the backups you already have
 
+The nightly backup habit and its reasoning live in BACKUP_HABIT.md;
+registering its scheduled task is always an explicit opt-in via
+schedule_backup.py.
+
 Run it from the project folder:
 
     .\\venv\\Scripts\\python.exe admin_tool.py list-users
@@ -265,6 +269,14 @@ def prune_backups(dest_root: Path, keep: int) -> list[str]:
     return removed
 
 
+def log_backup_line(dest_root: Path, line: str) -> None:
+    """One line per backup attempt. This is the evidence trail for
+    runs nobody watched — like the nightly scheduled task."""
+    dest_root.mkdir(parents=True, exist_ok=True)
+    with open(dest_root / "backup.log", "a", encoding="utf-8") as out:
+        out.write(line + "\n")
+
+
 def do_backup(dest_root: Path | None = None, keep: int | None = None,
               upload_dir: Path | None = None) -> int:
     dest_root = dest_root or DEFAULT_BACKUP_DIR
@@ -272,6 +284,9 @@ def do_backup(dest_root: Path | None = None, keep: int | None = None,
     if not db_path.exists():
         print(f"No database found at {db_path} — nothing to back up.\n"
               "Start the server once so it creates the database.")
+        log_backup_line(
+            dest_root, f"{datetime.now().isoformat(timespec='seconds')}"
+            "  ABORT  no database to back up")
         return 1
 
     folder = fresh_backup_folder(dest_root)
@@ -306,6 +321,11 @@ def do_backup(dest_root: Path | None = None, keep: int | None = None,
 
     write_manifest(folder, db_path, verify_result)
     print(f"Manifest       : {folder / 'MANIFEST.txt'}")
+    log_backup_line(
+        dest_root,
+        f"{datetime.now().isoformat(timespec='seconds')}  "
+        f"{folder.name}  {'PASS' if verify_result['ok'] else 'FAIL'}  "
+        f"db + {verify_result['file_count']} upload(s)")
 
     if keep is not None:
         removed = prune_backups(dest_root, keep)
