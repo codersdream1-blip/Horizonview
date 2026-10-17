@@ -226,9 +226,13 @@
             };
 
             try {
+                // Echoes the csrf_token cookie, like every page's
+                // state-changing request (see project_detail.html).
+                const csrf = (document.cookie.match(/(?:^|; )csrf_token=([^;]*)/) || [])[1] || "";
                 const response = await fetch("/api/projects", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json",
+                               "X-CSRF-Token": decodeURIComponent(csrf) },
                     body: JSON.stringify(values)
                 });
 

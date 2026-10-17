@@ -891,6 +891,15 @@
     </main>
 
     <script>
+        // Echoes the csrf_token cookie (set at login) back to the
+        // server on every state-changing request. The server compares
+        // it with the signed session copy — a forged request from
+        // another website cannot read this cookie.
+        function csrfToken() {
+            const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
+            return match ? decodeURIComponent(match[1]) : "";
+        }
+
         const updateForm = document.getElementById("addUpdateForm");
         const updateMessage = document.getElementById("updateMessage");
         const updateButton = updateForm.querySelector("button[type=submit]");
@@ -912,7 +921,8 @@
             try {
                 const response = await fetch(`/api/projects/${projectId}/updates`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json",
+                               "X-CSRF-Token": csrfToken() },
                     body: JSON.stringify(values)
                 });
 
@@ -977,6 +987,7 @@
                 // multipart boundary itself when we send a FormData.
                 const response = await fetch(`/api/projects/${projectId}/photos`, {
                     method: "POST",
+                    headers: { "X-CSRF-Token": csrfToken() },
                     body: formData
                 });
 
@@ -1024,7 +1035,8 @@
             try {
                 const response = await fetch(`/api/projects/${projectId}/expenses`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json",
+                               "X-CSRF-Token": csrfToken() },
                     body: JSON.stringify(values)
                 });
 
@@ -1075,7 +1087,8 @@
             try {
                 const response = await fetch(`/api/projects/${projectId}/messages`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json",
+                               "X-CSRF-Token": csrfToken() },
                     body: JSON.stringify(values)
                 });
 
@@ -1132,6 +1145,7 @@
             try {
                 const response = await fetch(`/api/projects/${projectId}/documents`, {
                     method: "POST",
+                    headers: { "X-CSRF-Token": csrfToken() },
                     body: formData
                 });
 
@@ -1182,7 +1196,8 @@
             const { kind, id } = button.dataset;
             try {
                 const response = await fetch(`/api/${kind}/${id}`, {
-                    method: "DELETE"
+                    method: "DELETE",
+                    headers: { "X-CSRF-Token": csrfToken() }
                 });
 
                 if (response.status === 401) {

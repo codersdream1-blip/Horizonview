@@ -117,6 +117,41 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
         return False
 
 
+# ---------- CSRF (cross-site request forgery) defence ----------
+#
+# How it works:
+# 1. When you log in, the server creates a random token and stores it
+#    inside your signed session, AND mirrors it as a readable
+#    csrf_token cookie (the browser must be able to read the mirror
+#    for JavaScript to echo it back).
+# 2. Every state-changing fetch the page JavaScript sends carries the
+#    token in the X-CSRF-Token header.
+# 3. Mutating /api routes compare the header with the session copy.
+#    A request forged from another website (which cannot read your
+#    cookies) fails that comparison.
+#
+# Only logged-in mutations are guarded: /api/login and /api/register
+# run without a session at all and are already covered by modern
+# browsers refusing to attach cookies to cross-site POSTs
+# (the session cookie is SameSite=Lax).
+
+CSRF_COOKIE_NAME = "csrf_token"
+
+
+def create_csrf_token(request: Request) -> str:
+    token = secrets.token_hex(32)
+    request.session["csrf_token"] = token
+    return token
+
+
+def csrf_valid(request: Request) -> bool:
+    session_token = request.session.get("csrf_token")
+    given = request.headers.get("x-csrf-token", "")
+    if not session_token or not given:
+        return False
+    return secrets.compare_digest(session_token, given)
+
+
 def bad_request(message: str, errors: dict | None = None) -> JSONResponse:
     payload: dict = {"ok": False, "message": message}
     if errors:
@@ -249,9 +284,19 @@ async def login(request: Request):
     # Signed session cookie (set up in main.py).
     request.session["user_id"] = user["id"]
 
-    return JSONResponse(
+    # Fresh CSRF token per login, mirrored as a readable cookie so the
+    # page JavaScript can echo it back in the X-CSRF-Token header.
+    csrf_token = create_csrf_token(request)
+    response = JSONResponse(
         {"ok": True, "message": "Logged in.", "full_name": user["full_name"]}
     )
+    response.set_cookie(
+        CSRF_COOKIE_NAME,
+        csrf_token,
+        samesite="lax",
+        path="/",
+    )
+    return response
 
 
 @router.post("/logout")

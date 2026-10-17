@@ -27,7 +27,8 @@ def fresh_db(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def client(fresh_db):
-    return TestClient(main.app)
+    from conftest import CsrfClient
+    return CsrfClient(main.app)
 
 
 def make_logged_in(client):

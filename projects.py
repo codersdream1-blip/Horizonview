@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
-from auth import get_current_user
+from auth import get_current_user, csrf_valid
 import db
 
 router = APIRouter(prefix="/api", tags=["projects"])
@@ -66,6 +66,10 @@ async def remove_photo(photo_id: int, request: Request):
     if denial:
         return denial
 
+    denial = bad_csrf(request)
+    if denial:
+        return denial
+
     _remove_stored_file(photo["stored_path"])
     db.delete_photo(photo_id)
 
@@ -81,6 +85,10 @@ async def remove_document(document_id: int, request: Request):
         )
 
     user, denial = owner_or_response(request, document["project_id"])
+    if denial:
+        return denial
+
+    denial = bad_csrf(request)
     if denial:
         return denial
 
@@ -231,6 +239,10 @@ async def add_project_update(project_id: int, request: Request):
             {"ok": False, "message": "Project not found."}, status_code=404
         )
 
+    denial = bad_csrf(request)
+    if denial:
+        return denial
+
     try:
         data = await request.json()
     except Exception:
@@ -318,6 +330,10 @@ async def upload_photo(
         return JSONResponse(
             {"ok": False, "message": "Project not found."}, status_code=404
         )
+
+    denial = bad_csrf(request)
+    if denial:
+        return denial
 
     data = await photo.read()
 
@@ -432,6 +448,10 @@ async def upload_document(
             {"ok": False, "message": "Project not found."}, status_code=404
         )
 
+    denial = bad_csrf(request)
+    if denial:
+        return denial
+
     data = await document.read()
 
     if not data:
@@ -524,6 +544,19 @@ async def serve_document(document_id: int, request: Request):
     return FileResponse(file_path, media_type=media_type)
 
 
+def bad_csrf(request: Request) -> JSONResponse | None:
+    """Return a 403 for logged-in mutations without the CSRF header."""
+    if csrf_valid(request):
+        return None
+    return JSONResponse(
+        {
+            "ok": False,
+            "message": "Security check failed. Refresh the page and try again.",
+        },
+        status_code=403,
+    )
+
+
 def owner_or_response(request: Request, project_id: int):
     """Shared identity-first access check for single-record routes.
 
@@ -604,6 +637,10 @@ async def edit_expense(expense_id: int, request: Request):
     if denial:
         return denial
 
+    denial = bad_csrf(request)
+    if denial:
+        return denial
+
     try:
         data = await request.json()
     except Exception:
@@ -640,6 +677,10 @@ async def remove_expense(expense_id: int, request: Request):
     if denial:
         return denial
 
+    denial = bad_csrf(request)
+    if denial:
+        return denial
+
     project_id = expense["project_id"]
     db.delete_expense(expense_id)
 
@@ -658,6 +699,10 @@ async def remove_update(update_id: int, request: Request):
 
     project_id = note["project_id"]
     user, denial = owner_or_response(request, project_id)
+    if denial:
+        return denial
+
+    denial = bad_csrf(request)
     if denial:
         return denial
 
@@ -707,6 +752,10 @@ async def add_expense(project_id: int, request: Request):
     if denial:
         return denial
     project = db.get_project_by_id(project_id)
+
+    denial = bad_csrf(request)
+    if denial:
+        return denial
 
     try:
         data = await request.json()
@@ -758,6 +807,10 @@ async def post_message(project_id: int, request: Request):
         return JSONResponse(
             {"ok": False, "message": "Project not found."}, status_code=404
         )
+
+    denial = bad_csrf(request)
+    if denial:
+        return denial
 
     try:
         data = await request.json()
@@ -871,6 +924,10 @@ async def create_project(request: Request):
         return JSONResponse(
             {"ok": False, "message": "Log in first."}, status_code=401
         )
+
+    denial = bad_csrf(request)
+    if denial:
+        return denial
 
     try:
         data = await request.json()
