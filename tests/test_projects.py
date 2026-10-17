@@ -106,6 +106,16 @@ def test_negative_budget_rejected(client):
     assert db.get_projects_for_user(1) == []
 
 
+def test_comma_formatted_budget_is_accepted(client):
+    """Ghanaians write 450,000.25 with commas; the expense ledger
+    already accepted that habit, so the budget field must too."""
+    make_logged_in(client)
+    response = create_project(client, budget="450,000.25")
+    assert response.status_code == 201, response.text
+    assert response.json()["project"]["budget_display"] == "GH₵450,000"
+    assert db.get_projects_for_user(1)[0]["budget_ghs"] == 450000.25
+
+
 def test_project_owner_isolation(client, fresh_db, tmp_path, monkeypatch):
     """User B must not see or take over user A's project."""
     make_logged_in(client)

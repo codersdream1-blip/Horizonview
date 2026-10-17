@@ -165,13 +165,18 @@ def validate_project(data: dict) -> tuple[dict, dict]:
     if len(description) > 5000:
         errors["description"] = "Description is too long (maximum 5000 characters)."
 
-    budget_raw = str(data.get("budget_ghs", "") or "").strip()
+    # Commas are stripped like the expense parser does, so people who
+    # naturally type "450,000.25" are not punished with an error while
+    # the same habit works everywhere else in the app.
+    budget_raw = str(data.get("budget_ghs", "") or "").strip().replace(",", "")
     budget = None
     if budget_raw:
         try:
             budget = float(budget_raw)
         except ValueError:
-            errors["budget_ghs"] = "Enter the budget as a number, for example 450000."
+            errors["budget_ghs"] = """
+                Enter the budget as a number, for example 450000 or
+                450,000.25.""".strip().replace("\n", " ")
         else:
             if not 0 < budget <= MAX_BUDGET_GHS:
                 errors["budget_ghs"] = "Budget must be greater than 0."
