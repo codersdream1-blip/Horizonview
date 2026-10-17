@@ -242,3 +242,63 @@ def test_sessions_without_registry_row_are_rejected(registered, fresh_db):
     # Same event if the sid exists but its row was revoked.
     stale.session = FakeSession({"user_id": user["id"], "sid": "dead-row"})
     assert auth.get_current_user(stale) is None
+
+
+# ---------- Registry housekeeping ----------
+
+def _insert_row_for(sid: str, user_id: int, age_days: int) -> None:
+    created = (
+        datetime.now(timezone.utc) - timedelta(days=age_days)
+    ).isoformat()
+    with db.get_connection() as conn:
+        conn.execute(
+            "INSERT INTO user_sessions (sid, user_id, created_at) "
+            "VALUES (?, ?, ?)",
+            (sid, user_id, created),
+        )
+
+
+def _sessions_for_user(user_id: int) -> list:
+    with db.get_connection() as conn:
+        return [
+            r["sid"] for r in conn.execute(
+                "SELECT sid FROM user_sessions WHERE user_id = ?",
+                (user_id,),
+            ).fetchall()
+        ]
+
+
+def test_expired_registry_rows_are_swept_on_login(registered, client):
+    user = db.get_user_by_email(EMAIL)
+    _insert_row_for("ancient-cookie-row", user["id"], age_days=9)
+    assert "ancient-cookie-row" in _sessions_for_user(user["id"])
+
+    # Logging in sweeps rows that cannot belong to a live cookie...
+    login_as(client)
+    assert "ancient-cookie-row" not in _sessions_for_user(user["id"])
+
+    # ...while the login's own fresh row survives the sweep.
+    fresh = _sessions_for_user(user["id"])
+    assert len(fresh) == 1
+    assert db.session_is_active(fresh[0])
+
+
+def test_valid_sessions_survive_someone_elses_login(registered, client,
+                                                   fresh_db):
+    user = db.get_user_by_email(EMAIL)
+    login_as(registered)
+    live_rows = _sessions_for_user(user["id"])
+    assert len(live_rows) == 1
+
+    # A second user logs in days' worth of nothing special later; the
+    # first user's fresh row must NOT be caught by the sweep.
+    client.post("/api/register", json={
+        "full_name": "Second Person", "email": "second@example.com",
+        "phone": "+233 21 010 010", "password": "second-pass-1",
+    })
+    login_as(client, email="second@example.com", password="second-pass-1")
+
+    assert db.session_is_active(live_rows[0])
+    assert db.session_is_active(_sessions_for_user(
+        db.get_user_by_email("second@example.com")["id"]
+    )[0])

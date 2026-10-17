@@ -330,6 +330,10 @@ async def login(request: Request):
     # Success resets the failure window for this (IP, email) pair.
     clear_login_failures(ip, email)
 
+    # Housekeeping while we are here: registry rows whose cookie has
+    # long expired are swept so the table cannot grow forever.
+    db.prune_expired_sessions()
+
     # Signed session cookie (set up in main.py) + a session-registry
     # row so this session can be revoked later (logout, password
     # reset).
