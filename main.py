@@ -99,6 +99,10 @@ def favicon():
 @app.get("/logout")
 def logout_page(request: Request):
     """Full-page logout used by the dashboard's Log Out link."""
+    # Revoke the session-registry row so the cookie stops working.
+    sid = request.session.get("sid")
+    if sid:
+        db.revoke_session(sid)
     request.session.clear()
     return RedirectResponse("/", status_code=303)
 

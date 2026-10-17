@@ -113,6 +113,19 @@ CREATE TABLE IF NOT EXISTS password_reset_requests (
     requested_ip TEXT
 );
 
+-- Server-side session registry. The signed browser cookie stays, but
+-- it now carries a session id (sid) that must match a live row here.
+-- This is what makes revocation possible:
+--   - logging out deletes the row  -> that cookie stops working
+--   - a password reset deletes ALL rows for the user -> every device
+--     (stolen laptop, ex-partner's phone, ...) is signed out at once.
+-- Cookie maximum age is one week; rows live until revoked.
+CREATE TABLE IF NOT EXISTS user_sessions (
+    sid TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL
+);
+
 -- Password reset requests. A single-use token is stored ONLY as a
 -- SHA-256 hash: even a stolen database backup cannot be replayed as
 -- a reset link. expires_at bounds the window in which the link works.
@@ -490,4 +503,37 @@ def set_user_password(user_id: int, password_hash: str) -> None:
         conn.execute(
             "UPDATE users SET password_hash = ? WHERE id = ?",
             (password_hash, user_id),
+        )
+
+
+# ---------- Server-side session registry (revocation) ----------
+
+def create_session(sid: str, user_id: int) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO user_sessions (sid, user_id, created_at) "
+            "VALUES (?, ?, ?)",
+            (sid, user_id, now),
+        )
+
+
+def session_is_active(sid: str) -> bool:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM user_sessions WHERE sid = ?", (sid,)
+        ).fetchone()
+        return row is not None
+
+
+def revoke_session(sid: str) -> None:
+    with get_connection() as conn:
+        conn.execute("DELETE FROM user_sessions WHERE sid = ?", (sid,))
+
+
+def revoke_all_sessions(user_id: int) -> None:
+    """Sign EVERY device out of this account (used on password reset)."""
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM user_sessions WHERE user_id = ?", (user_id,)
         )

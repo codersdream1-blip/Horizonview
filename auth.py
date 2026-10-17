@@ -143,7 +143,16 @@ def hash_password(plain_password: str) -> str:
 
 
 def get_current_user(request: Request) -> dict | None:
-    """Return the logged-in user's DB record, or None."""
+    """Return the logged-in user's DB record, or None.
+
+    The session cookie carries a session id (sid) that must still be
+    registered in the database. A row that was revoked (logout) or
+    deleted (password reset) makes this session dead even if the
+    signed cookie itself is intact.
+    """
+    sid = request.session.get("sid")
+    if not sid or not db.session_is_active(sid):
+        return None
     user_id = request.session.get("user_id")
     if not user_id:
         return None
@@ -321,8 +330,13 @@ async def login(request: Request):
     # Success resets the failure window for this (IP, email) pair.
     clear_login_failures(ip, email)
 
-    # Signed session cookie (set up in main.py).
+    # Signed session cookie (set up in main.py) + a session-registry
+    # row so this session can be revoked later (logout, password
+    # reset).
+    sid = secrets.token_hex(32)
     request.session["user_id"] = user["id"]
+    request.session["sid"] = sid
+    db.create_session(sid, user["id"])
 
     # Fresh CSRF token per login, mirrored as a readable cookie so the
     # page JavaScript can echo it back in the X-CSRF-Token header.
@@ -341,6 +355,11 @@ async def login(request: Request):
 
 @router.post("/logout")
 async def logout(request: Request):
+    # Revoke the registry row first: after this, even a copied cookie
+    # no longer authenticates.
+    sid = request.session.get("sid")
+    if sid:
+        db.revoke_session(sid)
     request.session.clear()
     return {"ok": True, "message": "Logged out."}
 
@@ -470,22 +489,28 @@ async def reset_password(request: Request):
     db.set_user_password(record["user_id"], hash_password(new_password))
     db.mark_password_reset_used(record["id"])
 
+    # Security step the cookie alone could never do: sign EVERY device
+    # out of this account. Anyone still holding an old session (the
+    # person who forgot the password, a forgotten tab, or somebody
+    # with unauthorized access) is logged out the moment the password
+    # changes.
+    db.revoke_all_sessions(record["user_id"])
+
     return JSONResponse(
         {
             "ok": True,
-            "message": "Password changed. You can now log in with your "
-                       "new password.",
+            "message": "Password changed. All existing logins on every "
+                       "device were signed out, and you can now log in "
+                       "with your new password.",
         }
     )
 
 
 @router.get("/me")
 async def me(request: Request):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return {"logged_in": False}
-
-    user = db.get_user_by_id(user_id)
+    # Revocation-aware: goes through the session-registry check like
+    # every other authenticated read.
+    user = get_current_user(request)
     if not user:
         return {"logged_in": False}
 

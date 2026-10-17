@@ -178,3 +178,67 @@ def test_failed_reset_attempts_are_rate_limited(registered):
         "token": token, "new_password": NEW_PASSWORD,
     })
     assert response.status_code == 429
+
+
+# ---------- Server-side session revocation ----------
+
+def login_as(client_obj, email=EMAIL, password=PASSWORD):
+    response = client_obj.post("/api/login", json={
+        "email": email, "password": password,
+    })
+    assert response.status_code == 200, response.text
+
+
+def two_logged_in_devices(registered):
+    """Simulate two physical devices by giving each a fresh cookie jar."""
+    other = TestClient(main.app)  # device two
+    login_as(registered)          # device one inside `registered`
+    login_as(other)
+    for device in (registered, other):
+        assert device.get("/api/me").json()["logged_in"] is True
+    return other
+
+
+def test_password_reset_signs_out_every_device(registered, fresh_db):
+    device_two = two_logged_in_devices(registered)
+    token = mint_token()
+    response = registered.post("/api/reset-password", json={
+        "token": token, "new_password": NEW_PASSWORD,
+    })
+    assert response.status_code == 200
+
+    for device in (registered, device_two):
+        assert device.get("/api/me").json()["logged_in"] is False
+    # And the new password yields a working (fresh) session.
+    login_as(registered, password=NEW_PASSWORD)
+    assert registered.get("/api/me").json()["logged_in"] is True
+
+
+def test_logout_revokes_only_its_own_session(registered, fresh_db):
+    device_two = two_logged_in_devices(registered)
+
+    response = registered.post("/api/logout", json={})
+    assert response.status_code == 200
+    assert registered.get("/api/me").json()["logged_in"] is False
+    # Device two is untouched: a logout must not sign other devices out.
+    assert device_two.get("/api/me").json()["logged_in"] is True
+
+
+def test_sessions_without_registry_row_are_rejected(registered, fresh_db):
+    login_as(registered)
+    user = db.get_user_by_email(EMAIL)
+
+    class FakeSession(dict):
+        pass
+
+    class FakeRequest:
+        pass
+
+    # A cookie from before the registry existed: user_id set, no sid.
+    stale = FakeRequest()
+    stale.session = FakeSession({"user_id": user["id"]})
+    assert auth.get_current_user(stale) is None
+
+    # Same event if the sid exists but its row was revoked.
+    stale.session = FakeSession({"user_id": user["id"], "sid": "dead-row"})
+    assert auth.get_current_user(stale) is None
