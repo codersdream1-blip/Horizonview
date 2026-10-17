@@ -111,6 +111,7 @@ def dashboard(request: Request):
     all_photos: list[dict] = []
     all_expenses: list[dict] = []
     all_messages: list[dict] = []
+    all_documents: list[dict] = []
     activities: list[dict] = []
 
     for raw, shown in zip(raw_projects, user_projects):
@@ -160,6 +161,12 @@ def dashboard(request: Request):
                 "project_id": raw["id"],
             })
 
+        for document in db.get_documents_for_project(raw["id"]):
+            item = projects.display_document(document)
+            item["project_name"] = shown["name"]
+            item["project_id"] = raw["id"]
+            all_documents.append(item)
+
         for note in db.get_updates_for_project(raw["id"]):
             shown_note = projects.display_update(note, owner_id=user["id"])
             activities.append({
@@ -171,6 +178,7 @@ def dashboard(request: Request):
             })
 
     all_photos.sort(key=lambda p: p["created_at"], reverse=True)
+    all_documents.sort(key=lambda d: d["created_at"], reverse=True)
     activities.sort(key=lambda a: a["when"], reverse=True)
 
     total_budget = round(sum(
@@ -208,6 +216,8 @@ def dashboard(request: Request):
             "message_count": len(all_messages),
             "last_message": all_messages[-1] if all_messages else None,
             "budget_panel": budget_panel,
+            "document_count": len(all_documents),
+            "last_document": all_documents[0] if all_documents else None,
         },
     )
 
@@ -269,6 +279,11 @@ def project_detail(project_id: int, request: Request):
         for m in db.get_messages_for_project(project_id)
     ]
 
+    documents = [
+        projects.display_document(d)
+        for d in db.get_documents_for_project(project_id)
+    ]
+
     return templates.TemplateResponse(
         request=request,
         name="project_detail.html",
@@ -279,6 +294,7 @@ def project_detail(project_id: int, request: Request):
             "expenses": expenses,
             "expense_summary": expense_summary,
             "messages": messages,
+            "documents": documents,
             "categories": projects.EXPENSE_CATEGORIES,
             "today": date.today().isoformat(),
             "stages": projects.STAGES,

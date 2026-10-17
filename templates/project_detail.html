@@ -408,6 +408,56 @@
             color: #7b867e;
         }
 
+        .doc-list {
+            margin-top: 12px;
+        }
+
+        .doc-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border: 1px solid #e6ece7;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: white;
+        }
+
+        .doc-row:hover {
+            border-color: #43815a;
+            background: #f7faf7;
+        }
+
+        .doc-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .doc-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .doc-info strong {
+            display: block;
+            color: #173d2b;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .doc-info small {
+            color: #7b867e;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .doc-open {
+            font-size: 12px;
+            font-weight: 600;
+            color: #246440;
+            white-space: nowrap;
+        }
+
         @media (max-width: 620px) {
             .add-update-box .grid-2 {
                 grid-template-columns: 1fr;
@@ -641,9 +691,10 @@
             </section>
 
             <div class="pending-note">
-                Recorded videos and official payment records will appear on
-                this page once those phases are switched on. Everything else
-                on this page is real data you have recorded.
+                Site video walkthroughs and official payment records are
+                the last parts still on the roadmap. Everything else on
+                this page — notes, photos, budget, messages and documents
+                — is real data you have recorded.
             </div>
 
             <h2 class="progress-heading">Progress notes</h2>
@@ -749,6 +800,47 @@
                     Messages stay private to your project. In this phase you
                     can post; replies from your HorizonView project team
                     appear here once the team inbox is switched on.
+                </p>
+            </section>
+
+            <h2 class="progress-heading">Project documents</h2>
+
+            {% if documents %}
+            <section class="doc-list">
+                {% for d in documents %}
+                <a class="doc-row" href="{{ d.api_url }}" target="_blank" rel="noopener">
+                    <span class="doc-icon">{{ '📄' if d.extension == 'pdf' else '🖼️' }}</span>
+                    <span class="doc-info">
+                        <strong>{{ d.description or d.original_filename }}</strong>
+                        <small>{{ d.original_filename }} · {{ d.type_label }} · {{ d.created_display }}</small>
+                    </span>
+                    <span class="doc-open">Open ↗</span>
+                </a>
+                {% endfor %}
+            </section>
+            {% else %}
+            <p class="update-empty">No documents yet.</p>
+            {% endif %}
+
+            <section class="add-update-box">
+                <h3>Upload a document</h3>
+
+                <form id="documentForm">
+                    <label for="docFile">Document (PDF, PNG or JPEG, up to 10 MB) *</label>
+                    <input type="file" id="docFile" accept=".pdf,.png,.jpg,.jpeg" required>
+
+                    <label for="docDesc" style="margin-top: 12px;">Description</label>
+                    <input type="text" id="docDesc" maxlength="200"
+                           placeholder="Example: Signed contract page 1">
+
+                    <button type="submit" class="project-submit">Upload Document</button>
+                    <p id="docMessage" class="form-msg" role="status" aria-live="polite"></p>
+                </form>
+
+                <p class="note-explain">
+                    Documents are checked by file content and stored with a
+                    random safe name, like photos. Only you can open them
+                    while logged in.
                 </p>
             </section>
         </section>
@@ -963,6 +1055,62 @@
                     "Could not reach the HorizonView server. Make sure it is running.";
             } finally {
                 messageButton.disabled = false;
+            }
+        });
+
+        const documentForm = document.getElementById("documentForm");
+        const docMessage = document.getElementById("docMessage");
+        const docButton = documentForm.querySelector("button[type=submit]");
+
+        documentForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const fileInput = document.getElementById("docFile");
+            if (!fileInput.files || fileInput.files.length === 0) {
+                docMessage.textContent = "Choose a document file first.";
+                return;
+            }
+            if (fileInput.files[0].size > 10 * 1024 * 1024) {
+                docMessage.textContent =
+                    "That file is larger than 10 MB.";
+                return;
+            }
+
+            docButton.disabled = true;
+            docMessage.textContent = "Uploading...";
+
+            const projectId = window.location.pathname.split("/")[2];
+            const formData = new FormData();
+            formData.append("document", fileInput.files[0]);
+            formData.append("description",
+                document.getElementById("docDesc").value);
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/documents`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                let data = null;
+                try { data = await response.json(); } catch (e) { data = null; }
+
+                if (response.ok) {
+                    window.location.reload();
+                    return;
+                }
+
+                docMessage.textContent = (data && data.message) ||
+                    "Upload failed. Please try again.";
+            } catch (networkError) {
+                docMessage.textContent =
+                    "Could not reach the HorizonView server. Make sure it is running.";
+            } finally {
+                docButton.disabled = false;
             }
         });
     </script>

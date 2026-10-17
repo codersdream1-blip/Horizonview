@@ -22,6 +22,9 @@ UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024  # 5 MB
 
+# Documents get a bigger allowance: contracts and drawings are heavy.
+MAX_DOCUMENT_BYTES = 10 * 1024 * 1024  # 10 MB
+
 # Recognized by file signature (magic bytes), never by the browser's
 # declared content type, which is trivially forged.
 PHOTO_SIGNATURES = (
@@ -49,6 +52,13 @@ def _money(value: float) -> str:
 
 # Public alias for use outside this module (dashboards, etc.).
 format_money = _money
+
+
+def detect_document_extension(data: bytes) -> str | None:
+    """PDFs and image tables, recognised by signature only."""
+    if data.startswith(b"%PDF-"):
+        return "pdf"
+    return detect_photo_extension(data)
 
 PROJECT_TYPES = {
     "construction": "New Construction",
@@ -351,6 +361,130 @@ async def serve_photo(photo_id: int, request: Request):
         )
 
     media_type = "image/png" if photo["extension"] == "png" else "image/jpeg"
+    return FileResponse(file_path, media_type=media_type)
+
+
+def display_document(document: dict) -> dict:
+    document = dict(document)
+    document["created_display"] = document["created_at"][:10]
+    document["api_url"] = f"/api/documents/{document['id']}"
+    label = {
+        "pdf": "PDF",
+        "png": "PNG image",
+        "jpg": "JPEG image",
+    }.get(document["extension"], document["extension"])
+    document["type_label"] = label
+    return document
+
+
+@router.post("/projects/{project_id}/documents")
+async def upload_document(
+    project_id: int,
+    request: Request,
+    document: UploadFile = File(...),
+    description: str = Form(""),
+):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    project = db.get_project_by_id(project_id)
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Project not found."}, status_code=404
+        )
+
+    data = await document.read()
+
+    if not data:
+        return JSONResponse(
+            {"ok": False, "message": "The uploaded file is empty."},
+            status_code=400,
+        )
+
+    if len(data) > MAX_DOCUMENT_BYTES:
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Document is too large. Maximum allowed size "
+                           "is 10 MB.",
+            },
+            status_code=400,
+        )
+
+    extension = detect_document_extension(data)
+    if not extension:
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Only PDF, PNG or JPEG documents are accepted. "
+                           "The file content did not look like any of them.",
+            },
+            status_code=400,
+        )
+
+    project_dir = UPLOAD_DIR / f"project_{project_id}"
+    project_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.{extension}"
+    (project_dir / filename).write_bytes(data)
+
+    clean_description = str(description).strip()[:200] or None
+
+    document_id = db.create_document(
+        project_id=project_id,
+        uploader_id=user["id"],
+        original_filename=str(document.filename or "unnamed")[:200],
+        stored_path=f"project_{project_id}/{filename}",
+        extension=extension,
+        description=clean_description,
+    )
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Document uploaded.",
+            "document_id": document_id,
+        },
+        status_code=201,
+    )
+
+
+@router.get("/documents/{document_id}")
+async def serve_document(document_id: int, request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"ok": False, "message": "Log in first."}, status_code=401
+        )
+
+    document = db.get_document_by_id(document_id)
+    if not document:
+        return JSONResponse(
+            {"ok": False, "message": "Document not found."}, status_code=404
+        )
+
+    project = db.get_project_by_id(document["project_id"])
+    if not project or project["owner_id"] != user["id"]:
+        return JSONResponse(
+            {"ok": False, "message": "Document not found."}, status_code=404
+        )
+
+    file_path = UPLOAD_DIR / document["stored_path"]
+    if not file_path.is_file():
+        return JSONResponse(
+            {"ok": False, "message": "Document not found."}, status_code=404
+        )
+
+    media_type = {
+        "pdf": "application/pdf",
+        "png": "image/png",
+        "jpg": "image/jpeg",
+    }.get(document["extension"], "application/octet-stream")
+
+    # Served inline so PDFs open in the browser viewer, with the
+    # safe stored name — never the user-supplied name (header injection).
     return FileResponse(file_path, media_type=media_type)
 
 

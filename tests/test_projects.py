@@ -687,3 +687,104 @@ def test_dashboard_empty_states_stay_honest(client):
     assert "No activity yet" in page
     assert "No messages yet" in page
     assert "Platinum Live Video" in page     # still a labelled future panel
+
+
+# ---------- Documents ----------
+
+PDF_BYTES = b"%PDF-1.4\n" + b"1 0 obj\n<< /Type /Catalog >>\nendobj\n" \
+            b"%%EOF\n" + b"\x00" * 1024
+
+
+def upload_document(client, project_id, filename="contract.pdf",
+                    content=PDF_BYTES, description="Signed contract",
+                    content_type="application/pdf"):
+    return client.post(
+        f"/api/projects/{project_id}/documents",
+        files={"document": (filename, content, content_type)},
+        data={"description": description},
+    )
+
+
+def test_upload_document_stores_and_serves(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    response = upload_document(client, project_id)
+    assert response.status_code == 201
+
+    docs = db.get_documents_for_project(project_id)
+    assert len(docs) == 1
+    assert docs[0]["extension"] == "pdf"
+    assert docs[0]["description"] == "Signed contract"
+    assert docs[0]["stored_path"].startswith(f"project_{project_id}/")
+
+    served = client.get(f"/api/documents/{docs[0]['id']}")
+    assert served.status_code == 200
+    assert served.headers["content-type"].startswith("application/pdf")
+    assert served.content == PDF_BYTES
+
+
+def test_document_rejects_unknown_type_and_christened_exe(client, tmp_path,
+                                                          monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    # A .pdf name whose content is an executable signature.
+    response = upload_document(client, project_id, filename="trojan.pdf",
+                               content=b"MZ" + b"\x00" * 512, description="")
+    assert response.status_code == 400
+    assert "PDF, PNG or JPEG" in response.json()["message"]
+
+    # A plain Word document by content, not just by name.
+    response = upload_document(client, project_id, filename="notes.docx",
+                               content=b"P" * 64, description="",
+                               content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    assert response.status_code == 400
+
+    assert db.get_documents_for_project(project_id) == []
+
+
+def test_document_size_and_ownership(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+
+    eleven_mb = PDF_BYTES + b"\x00" * (11 * 1024 * 1024)
+    response = upload_document(client, project_id, content=eleven_mb)
+    assert response.status_code == 400
+    assert "10 MB" in response.json()["message"]
+
+    client.post("/api/logout")
+    other = dict(REGISTER_PAYLOAD, email="stranger6@example.com")
+    client.post("/api/register", json=other)
+    client.post("/api/login",
+                json={"email": other["email"],
+                      "password": other["password"]})
+
+    assert upload_document(client, project_id).status_code == 404
+    assert client.get("/api/documents/1").status_code == 404
+
+    client.post("/api/logout")
+    assert client.get("/api/documents/1").status_code == 401
+
+
+def test_document_page_and_dashboard_wiring(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(projects_api, "UPLOAD_DIR", tmp_path)
+    make_logged_in(client)
+    project_id = create_project(client).json()["project"]["id"]
+    upload_document(client, project_id)
+    doc_id = db.get_documents_for_project(project_id)[0]["id"]
+
+    detail = _squash(client.get(f"/projects/{project_id}").text)
+    assert "Project documents" in detail
+    assert "Signed contract" in detail
+    assert f'href="/api/documents/{doc_id}"' in detail
+    assert "Upload a document" in detail
+
+    dash = _squash(client.get("/dashboard").text)
+    assert "1 document stored." in dash
+    assert "Signed contract" in dash
+    # The prototype-notice entry for documents is retired.
+    assert "Document storage is not connected" not in dash

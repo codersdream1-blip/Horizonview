@@ -977,25 +977,38 @@
 
                     <h3>Project Documents</h3>
 
+                    {% if last_document %}
                     <p>
-                        Access contracts, drawings, receipts,
-                        inspection reports, and other project records.
+                        {{ document_count }} document{{ 's' if document_count != 1 else '' }}
+                        stored. Latest on
+                        <strong>{{ last_document.project_name }}</strong>:
+                        {{ last_document.description or last_document.original_filename }}
+                        ({{ last_document.type_label }})
                     </p>
-
-                    <button class="feature-button secondary"
-                        onclick="showNotice('Project Documents')">
-                        View Documents
-                    </button>
+                    <a class="feature-button secondary"
+                       href="/projects/{{ last_document.project_id }}">
+                        Open Documents
+                    </a>
+                    {% else %}
+                    <p>
+                        Contracts, drawings and receipts live on each
+                        project's page. Open a project and upload your
+                        first document — everything is checked and owner-only.
+                    </p>
+                    <a class="feature-button secondary"
+                       href="{{ '/projects/' + projects[0].id | string if projects else '/projects/new' }}">
+                        {{ 'Go to a Project' if projects else 'Create a Project First' }}
+                    </a>
+                    {% endif %}
                 </article>
 
             </section>
 
             <p class="demo-note">
-                Everything except videos, live-streaming and documents is
-                real: your account, projects, photos, spending records,
+                Everything except videos and live-streaming is real: your
+                account, projects, photos, documents, spending records,
                 progress notes and messages all come from your own data.
-                Videos and live-streaming are known-future features — see
-                the notices on those panels.
+                Those two remain clearly labelled future features.
             </p>
 
         </div>
@@ -1006,15 +1019,13 @@
 <script>
 
     // Honest status notes for dashboard features that are not built
-    // yet. Photos, budget and messaging now show real data and link
-    // straight to the project pages.
+    // yet. Photos, budget, messaging and documents now show real data
+    // and link straight to the project pages.
     const featureNotices = {
         "Recorded Videos":
             "Recorded walkthrough, update and inspection videos will play here. Video uploads are not connected to the backend yet.",
         "Platinum Live Video":
-            "Live site tours need a real streaming provider and a Platinum package. Live video is planned for a later phase — nothing is being streamed right now.",
-        "Project Documents":
-            "Contracts, drawings, receipts and inspection reports will be listed here. Document storage is not connected to the backend yet."
+            "Live site tours need a real streaming provider and a Platinum package. Live video is planned for a later phase — nothing is being streamed right now."
     };
 
     const noticePanel = document.getElementById("featureNotice");

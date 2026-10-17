@@ -89,6 +89,19 @@ CREATE TABLE IF NOT EXISTS project_messages (
     body TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+-- Uploaded project documents (contracts, drawings, receipts).
+-- Files live on disk under uploads/, like photos.
+CREATE TABLE IF NOT EXISTS project_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    uploader_id INTEGER NOT NULL REFERENCES users(id),
+    original_filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    extension TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -298,3 +311,41 @@ def get_messages_for_project(project_id: int) -> list[dict]:
             (project_id,),
         ).fetchall()
         return [dict(row) for row in rows]
+
+
+def create_document(
+    project_id: int,
+    uploader_id: int,
+    original_filename: str,
+    stored_path: str,
+    extension: str,
+    description: str | None,
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO project_documents (project_id, uploader_id, "
+            "original_filename, stored_path, extension, description, "
+            "created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (project_id, uploader_id, original_filename, stored_path,
+             extension, description, now),
+        )
+        return cursor.lastrowid
+
+
+def get_documents_for_project(project_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM project_documents WHERE project_id = ? "
+            "ORDER BY created_at DESC, id DESC",
+            (project_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def get_document_by_id(document_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM project_documents WHERE id = ?", (document_id,)
+        ).fetchone()
+        return dict(row) if row else None
