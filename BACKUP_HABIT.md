@@ -52,6 +52,34 @@ Each backup folder's `MANIFEST.txt` has the same four steps:
 
 Then take a fresh backup, since the restored state is now the newest.
 
+## Your real second spot (as of 2026-10-19)
+
+```
+nightly task now runs:  backup-db.py --keep 14 --copy-to "H:\HorizonViewBackups"
+```
+
+**What H: is:** a second **internal** disk on this machine. The mirror
+there survives the most common data-killer — the C: drive itself
+dying — so the nightly run now protects against records loss on C:.
+
+**What H: does NOT protect against (honesty):** theft, fire, power
+surges hitting the whole machine, or serious malware reaching all
+disks. Those situations expect the cloud option below.
+
+**The cloud option is pending, not rejected:** OneDrive is installed
+on this machine (`C:\Users\THIS PC\OneDrive` exists) but its client
+was NOT running on the day of decision, so backups written there
+would sit in place without syncing while looking like a second copy —
+a false comfort. The upgrade step once the OneDrive client actually
+runs:
+
+```
+.\venv\Scripts\python.exe schedule_backup.py --copy-to "C:\Users\THIS PC\OneDrive\HorizonViewBackups"
+```
+
+(Then the cloud account becomes the across-machine copy and H: stays
+the second-disk copy. F: was rejected for now — only 3.4 GB free.)
+
 ## Second location: the honest upgrade (built in)
 
 ```
