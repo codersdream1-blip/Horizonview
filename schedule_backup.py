@@ -31,12 +31,13 @@ TASK_NAME = "HorizonView daily backup"
 def backup_action_string(python_exe: str = str(PYTHON_EXE),
                          backup_script: str = str(BACKUP_SCRIPT),
                          keep: int = DEFAULT_KEEP,
-                         copy_to: str | None = None) -> str:
+                         copy_to: list[str] | None = None) -> str:
     """What the scheduler runs each night. Quoted because this
-    project's folder contains spaces."""
+    project's folder contains spaces. Several second locations are
+    allowed — one --copy-to per location."""
     action = f'"{python_exe}" "{backup_script}" --keep {keep}'
-    if copy_to:
-        action += f' --copy-to "{copy_to}"'
+    for location in copy_to or []:
+        action += f' --copy-to "{location}"'
     return action
 
 
@@ -107,9 +108,10 @@ def main() -> int:
                         help=f"how many backups to keep (default "
                              f"{DEFAULT_KEEP})")
     parser.add_argument(
-        "--copy-to", default=None, metavar="FOLDER",
+        "--copy-to", action="append", metavar="FOLDER",
         help="the nightly task also mirrors every backup into this "
-             "second location (other drive or cloud-synced folder)")
+             "second location (other drive or cloud-synced folder); "
+             "repeat the flag for several locations")
     args = parser.parse_args()
 
     if not PYTHON_EXE.exists():

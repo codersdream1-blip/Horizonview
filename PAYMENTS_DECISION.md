@@ -73,6 +73,31 @@ aggregators (no clear self-serve sandbox; revisit if after a few
 sandbox rounds we want settlement-heavy features like instant MoMo
 disbursements).
 
+## Step-by-step: opening the Paystack TEST account (the operator's part)
+
+The one part only a human can do — needs a real email and your real
+details (entered honestly; nothing here is invented for you):
+
+1. Go to **dashboard.paystack.com/#/signup**. Choose Ghana as the
+   business country; use your real business/owner details. Create it
+   with a strong, unique password.
+2. Verify the email they send, then sign in to the dashboard.
+3. In the dashboard, open **Settings → API Keys & Webhooks** (exact
+   menu wording may differ slightly; it is the developers/settings
+   area). TEST mode is what you are in.
+4. Copy the **Secret key** (starts `sk_test_`) into the
+   `PSTK_SECRET_TEST_KEY=` slot in `.env`, and the **Public key**
+   (`pk_test_`) into `PSTK_PUBLIC_TEST_KEY=`. Type them in yourself
+   on this machine — never send the secret to anyone, including in
+   chat messages. `.env` is gitignored and never committed.
+5. Tell me "keys are filled" (no need to show them) — then the next
+   build step (the test-mode payment loop, step 3 of the sandbox
+   plan) starts.
+
+Reminder while we are here: the backup doc has the SAME pattern —
+`backup-db.py` never asked to see secrets either, and `MANIFEST.txt`
+steps stay manual by design.
+
 ## The sandbox-first plan (only after this memo is approved)
 
 1. Operator opens a Paystack account and copies the **TEST** keys.

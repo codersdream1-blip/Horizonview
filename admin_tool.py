@@ -299,7 +299,10 @@ def mirror_to_secondary(folder: Path, copy_to: Path) -> dict:
 
 def do_backup(dest_root: Path | None = None, keep: int | None = None,
               upload_dir: Path | None = None,
-              copy_to: Path | None = None) -> int:
+              copy_to: "list[Path] | Path | str | None" = None) -> int:
+    """copy_to accepts ONE location or MANY (repeat --copy-to). Every
+    verified backup is mirrored to each; any location's failure fails
+    the run loudly — half-working copies are never reported as done."""
     dest_root = dest_root or DEFAULT_BACKUP_DIR
     db_path = Path(db.DB_PATH)
     if not db_path.exists():
@@ -312,6 +315,11 @@ def do_backup(dest_root: Path | None = None, keep: int | None = None,
 
     folder = fresh_backup_folder(dest_root)
     print(f"Back-up target : {folder}")
+
+    if copy_to is None:
+        copy_to = []
+    elif isinstance(copy_to, (Path, str)):
+        copy_to = [copy_to]  # one location, or many — both are honest input
 
     dest_db = folder / db_path.name
     verdict = backup_database_snapshot(db_path, dest_db)
@@ -343,39 +351,44 @@ def do_backup(dest_root: Path | None = None, keep: int | None = None,
     write_manifest(folder, db_path, verify_result)
     print(f"Manifest       : {folder / 'MANIFEST.txt'}")
 
-    secondary_fail = None
-    if copy_to is not None:
-        if verify_result["ok"]:
-            try:
-                print(f"Second copy to : {copy_to}")
-                sec = mirror_to_secondary(folder, copy_to)
-                if sec["ok"]:
-                    print(f"Second copy    : PASS — same {sec['file_count']}"
-                          " file(s) in both locations")
-                else:
-                    secondary_fail = (
-                        "second location is missing: "
-                        f"{', '.join(sec['missing']) or 'files'}")
-            except (OSError, shutil.Error) as exc:
-                secondary_fail = f"{type(exc).__name__}: {exc}"
-            if secondary_fail:
-                print("Second copy    : FAIL — the local backup is "
-                      "still sound, but the second machine/location "
-                      "did not get it:")
-                print(f"    {secondary_fail}")
-        else:
-            secondary_fail = "primary backup failed verification"
+    mirror_targets = [Path(p) for p in copy_to]
+
+    secondary_fails: dict[str, str] = {}
+    for target_root in mirror_targets:
+        label = str(target_root)
+        if not verify_result["ok"]:
+            secondary_fails[label] = "primary backup failed verification"
+            print(f"Second copy to : {label}")
             print("Second copy    : SKIPPED — never ship a copy of "
                   "a backup that did not verify")
+            continue
+        try:
+            print(f"Second copy to : {label}")
+            sec = mirror_to_secondary(folder, target_root)
+            if sec["ok"]:
+                print(f"Second copy    : PASS — same {sec['file_count']}"
+                      " file(s) in both locations")
+            else:
+                secondary_fails[label] = (
+                    "second location is missing: "
+                    f"{', '.join(sec['missing']) or 'files'}")
+        except (OSError, shutil.Error) as exc:
+            secondary_fails[label] = f"{type(exc).__name__}: {exc}"
+        if label in secondary_fails:
+            print("Second copy    : FAIL — the local backup is "
+                  "still sound, but this machine/location did not "
+                  "get it:")
+            print(f"    {secondary_fails[label]}")
 
     log_backup_line(
         dest_root,
         f"{datetime.now().isoformat(timespec='seconds')}  "
         f"{folder.name}  {'PASS' if verify_result['ok'] else 'FAIL'}  "
         f"db + {verify_result['file_count']} upload(s)"
-        + ("" if not copy_to else
-           ("  SECONDARY-OK" if secondary_fail is None
-            else "  SECONDARY-FAIL")))
+        + ("" if not mirror_targets else
+           ("  SECONDARY-OK" if not secondary_fails
+            else "  SECONDARY-FAIL"
+                 f"({len(secondary_fails)}/{len(mirror_targets)})")))
 
     if keep is not None:
         removed = prune_backups(dest_root, keep)
@@ -385,18 +398,20 @@ def do_backup(dest_root: Path | None = None, keep: int | None = None,
         else:
             print(f"Pruned         : nothing to prune (kept the {keep} "
                   "newest)")
-        if copy_to is not None and secondary_fail is None:
-            removed = prune_backups(copy_to, keep)
+        for target_root in mirror_targets:
+            if str(target_root) in secondary_fails:
+                continue
+            removed = prune_backups(target_root, keep)
             if removed:
                 print(f"Pruned second  : {len(removed)} old backup(s) "
-                      f"removed in {copy_to} too")
+                      f"removed in {target_root} too")
     else:
         total = len(list(dest_root.glob('backup-*')))
         if total > 20:
             print("Hint           : many backups are piling up — "
                   "run again with --keep 14 to prune to the newest 14.")
 
-    overall_ok = verify_result["ok"] and secondary_fail is None
+    overall_ok = (verify_result["ok"] and not secondary_fails)
     return 0 if overall_ok else 1
 
 
@@ -486,9 +501,10 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"destination root (default: {DEFAULT_BACKUP_DIR.name})",
     )
     p_backup.add_argument(
-        "--copy-to", default=None, metavar="FOLDER",
-        help="also mirror the verified backup into a second location "
-             "(other drive or a cloud-synced folder)",
+        "--copy-to", action="append", metavar="FOLDER",
+        help="mirror the verified backup into a second location "
+             "(other drive or a cloud-synced folder); repeat the flag "
+             "for more than one location",
     )
     sub.add_parser(
         "list-backups", help="show existing backup folders (newest first)",
@@ -532,7 +548,7 @@ def main(argv: list[str] | None = None) -> int:
         return do_backup(
             dest_root=Path(args.dest) if args.dest else None,
             keep=args.keep,
-            copy_to=Path(args.copy_to) if args.copy_to else None,
+            copy_to=args.copy_to,
         )
     if args.command == "list-backups":
         return do_list_backups()

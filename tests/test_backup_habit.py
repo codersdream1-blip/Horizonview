@@ -110,10 +110,19 @@ def test_time_parsing_rejects_nonsense():
 
 def test_registered_action_can_carry_the_second_location():
     action = sched.backup_action_string(
-        copy_to=r"D:\HorizonBackups",
+        copy_to=[r"D:\HorizonBackups"],
         python_exe="C:/py/python.exe", backup_script="C:/b.py")
     assert action == ('"C:/py/python.exe" "C:/b.py" --keep 14 '
                       '--copy-to "D:\\HorizonBackups"')
+
+
+def test_registered_action_can_carry_two_second_locations():
+    action = sched.backup_action_string(
+        copy_to=[r"D:\HorizonBackups", r"C:\Users\THIS PC\OneDrive\hv"],
+        python_exe="C:/py/python.exe", backup_script="C:/b.py", keep=7)
+    assert action == ('"C:/py/python.exe" "C:/b.py" --keep 7 '
+                      '--copy-to "D:\\HorizonBackups" '
+                      '--copy-to "C:\\Users\\THIS PC\\OneDrive\\hv"')
 
 
 def test_registered_action_without_copy_to_stays_clean():
@@ -130,7 +139,7 @@ def test_do_backup_mirrors_the_verified_folder(fresh_db, tmp_path, capsys):
     secondary = tmp_path / "second" / "HorizonBackups"
 
     exit_code = admin_tool.do_backup(
-        dest_root=primary, upload_dir=uploads, copy_to=secondary)
+        dest_root=primary, upload_dir=uploads, copy_to=[secondary])
 
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -157,7 +166,7 @@ def test_failed_mirror_never_passes_silently(fresh_db, tmp_path, capsys):
     broken_second.write_text("not a folder")  # copytree must fail here
 
     exit_code = admin_tool.do_backup(
-        dest_root=primary, upload_dir=uploads, copy_to=broken_second)
+        dest_root=primary, upload_dir=uploads, copy_to=[broken_second])
 
     assert exit_code == 1
     out = capsys.readouterr().out
@@ -197,6 +206,50 @@ def test_guard_branch_skips_mirror_when_primary_failed(tmp_path):
 
     assert exit_code == 1
     assert calls == []  # the broken backup was never copied anywhere
+
+
+def test_two_locations_are_both_reported(fresh_db, tmp_path, capsys):
+    """The nightly habit's real shape from now on: H: disk AND a
+    cloud-synced folder. One gone bad never masks the other."""
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    (uploads / "photo.jpg").write_bytes(b"JPG")
+    primary = tmp_path / "backups"
+    healthy = tmp_path / "second" / "HorizonBackups"
+    broken = tmp_path / "a-file-named-like-a-path"
+    broken.write_text("not a folder")
+
+    exit_code = admin_tool.do_backup(
+        dest_root=primary, upload_dir=uploads, copy_to=[healthy, broken])
+
+    assert exit_code == 1  # one failed door fails the run
+    out = capsys.readouterr().out
+    assert out.count("Second copy    : PASS") == 1
+    assert out.count("Second copy    : FAIL") == 1
+    log_text = (primary / "backup.log").read_text("utf-8")
+    assert "SECONDARY-FAIL(1/2)" in log_text
+    # the healthy one still holds the paired folder
+    local_name = next(p.name for p in primary.glob("backup-*")
+                      if p.is_dir())
+    assert (healthy / local_name).is_dir()
+
+
+def test_both_succeed_logs_one_plain_ok(fresh_db, tmp_path, capsys):
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    primary = tmp_path / "backups"
+    one = tmp_path / "second" / "HorizonBackups"
+    two = tmp_path / "third" / "OneDriveFolder"
+
+    exit_code = admin_tool.do_backup(
+        dest_root=primary, upload_dir=uploads, copy_to=[one, two])
+
+    assert exit_code == 0
+    log_text = (primary / "backup.log").read_text("utf-8")
+    assert "SECONDARY-OK" in log_text and "SECONDARY-FAIL" not in log_text
+    local_name = next(p.name for p in primary.glob("backup-*")
+                      if p.is_dir())
+    assert (one / local_name).is_dir() and (two / local_name).is_dir()
 
 
 def test_secondary_slot_is_pruned_like_the_primary(fresh_db, tmp_path,
