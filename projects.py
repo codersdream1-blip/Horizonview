@@ -6,6 +6,7 @@ before touching the database, so a user can only ever see and create
 their own records.
 """
 
+import json
 import uuid
 from datetime import date
 from pathlib import Path
@@ -15,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from auth import get_current_user, csrf_valid
 import db
+import payments
 
 router = APIRouter(prefix="/api", tags=["projects"])
 
@@ -957,3 +959,125 @@ async def create_project(request: Request):
         {"ok": True, "message": "Project created.", "project": project},
         status_code=201,
     )
+
+
+# ---------- payments scaffold (TEST MODE ONLY) ----------
+
+# NOTE for the sandbox round: the owner requests a checkout for an
+# amount they type; the app records that amount as the authoritative
+# attempt and later RE-verifies the ACTUAL paid amount server-side.
+# A future round ties amounts to a server-side price catalogue; from
+# that day, nothing paid below the agreed price can unlock a service.
+
+
+@router.post("/projects/{project_id}/payments")
+async def start_payment(project_id: int, request: Request):
+    """Start a hosted checkout for the project owner.
+
+    Ladder: anon 401 / non-owner 404 / CSRF 403, then a clear
+    configured-keys error, never a silent fallback."""
+    user, denial = owner_or_response(request, project_id)
+    if denial:
+        return denial
+
+    denial = bad_csrf(request)
+    if denial:
+        return denial
+
+    try:
+        data = await request.json()
+    except Exception:
+        return bad_request("Send the request as JSON data.")
+    if not isinstance(data, dict):
+        return bad_request("Send the request as JSON data.")
+
+    # Same comma-tolerant money parsing as the expenses ledger.
+    amount_raw = str(data.get("amount_ghs", "") or "").strip().replace(",", "")
+    try:
+        amount = round(float(amount_raw), 2)
+    except ValueError:
+        amount = -1
+    if not 0 < amount <= 100_000_000:
+        return bad_request(
+            "Please fix the highlighted fields.",
+            {"amount_ghs": "Enter the amount in Ghana cedis, a number "
+                           "above 0."})
+
+    try:
+        secret = payments.secret_key()
+    except payments.PaymentsNotConfigured as exc:
+        return JSONResponse({"ok": False, "message": str(exc)},
+                            status_code=503)
+
+    reference = payments.new_reference()
+    checkout_url, provider_ref = payments.initiate_payment(
+        secret, amount, reference)
+    test_mode = secret.startswith("sk_test_")
+
+    attempt = db.create_payment_attempt(
+        project_id=project_id, owner_id=user["id"],
+        provider="paystack", provider_reference=reference,
+        amount_ghs=amount, test_mode=test_mode)
+
+    return JSONResponse({
+        "ok": True,
+        "message": "Checkout started (TEST MODE)."
+                   if test_mode else "Checkout started.",
+        "checkout_url": checkout_url,
+        "reference": reference,
+        "provider_reference": provider_ref,
+        "attempt": payments.display_attempt(attempt),
+    }, status_code=201)
+
+
+@router.get("/projects/{project_id}/payments")
+async def get_payments(project_id: int, request: Request):
+    """The owner's payment-attempt history for one project.
+    Identity-first: anon 401, non-owner 404."""
+    user, denial = owner_or_response(request, project_id)
+    if denial:
+        return denial
+    attempts = db.get_payment_attempts_for_project(project_id)
+    return {"ok": True,
+            "payments": [payments.display_attempt(a) for a in attempts]}
+
+
+@router.post("/payments/webhook/paystack")
+async def paystack_webhook(request: Request):
+    """Provider-signed notifications. No session on purpose: the
+    caller is PAYSTACK, and trust comes from the HMAC-SHA512 body
+    signature, never from a login."""
+    body = await request.body()
+    signature = request.headers.get("x-paystack-signature", "")
+    try:
+        secret = payments.secret_key()
+    except payments.PaymentsNotConfigured:
+        secret = None
+    if secret is None or not payments.webhook_signature_matches(
+            body, signature, secret):
+        return JSONResponse(
+            {"ok": False, "message": "Invalid webhook signature."},
+            status_code=401)
+
+    try:
+        event = json.loads(body.decode("utf-8"))
+    except Exception:
+        return JSONResponse(
+            {"ok": False, "message": "Body was not valid JSON."},
+            status_code=400)
+
+    if event.get("event") != "charge.success":
+        return {"ok": True}  # other events: no action today
+
+    data = event.get("data", {})
+    reference = str(data.get("reference", ""))
+    attempt = db.get_payment_attempt_by_reference(reference)
+    if not attempt:
+        return JSONResponse(
+            {"ok": False, "message": "Unknown transaction reference."},
+            status_code=404)
+
+    status = payments.evaluate_charge(attempt, data)
+    db.set_payment_attempt_status(reference, status, verified=True)
+    return {"ok": True, "reference": reference, "status": status}
+

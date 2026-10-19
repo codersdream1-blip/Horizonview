@@ -110,6 +110,26 @@ CREATE TABLE IF NOT EXISTS project_documents (
     description TEXT,
     created_at TEXT NOT NULL
 );
+
+-- Payment attempts (payments scaffold, TEST MODE only). A row is
+-- created the moment the owner starts a checkout. Only SERVER-side
+-- verification (the provider's own verify response, or a webhook
+-- with a valid signature) can move status past 'attempted' — a
+-- client's "I paid" is a claim, never a fact.
+-- Statuses: attempted | paid | mismatch (amount differed; never
+-- unlocks anything).
+CREATE TABLE IF NOT EXISTS payment_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    owner_id INTEGER NOT NULL REFERENCES users(id),
+    provider TEXT NOT NULL DEFAULT 'paystack',
+    provider_reference TEXT NOT NULL UNIQUE,
+    amount_ghs REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'attempted',
+    test_mode INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    verified_at TEXT
+);
 -- Reset requests from the "Forgot your password?" page. In this
 -- stage there is no email service: the administrator sees the pending
 -- requests here (create_reset_link.py) and verifies the person's
@@ -147,6 +167,10 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     requested_ip TEXT
 );
 """
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def get_connection() -> sqlite3.Connection:
@@ -437,6 +461,54 @@ def get_document_by_id(document_id: int) -> dict | None:
             "SELECT * FROM project_documents WHERE id = ?", (document_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+# ---------- payments (scaffold, test mode) ----------
+
+def create_payment_attempt(project_id: int, owner_id: int,
+                           provider: str, provider_reference: str,
+                           amount_ghs: float, test_mode: bool) -> dict:
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO payment_attempts (project_id, owner_id, "
+            "provider, provider_reference, amount_ghs, status, "
+            "test_mode, created_at) "
+            "VALUES (?, ?, ?, ?, ?, 'attempted', ?, ?)",
+            (project_id, owner_id, provider, provider_reference,
+             amount_ghs, 1 if test_mode else 0, _now_iso()),
+        )
+    return get_payment_attempt_by_reference(provider_reference)
+
+
+def get_payment_attempt_by_reference(reference: str) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM payment_attempts "
+            "WHERE provider_reference = ?", (reference,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_payment_attempts_for_project(project_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM payment_attempts WHERE project_id = ? "
+            "ORDER BY created_at DESC, id DESC",
+            (project_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def set_payment_attempt_status(reference: str, status: str,
+                               verified: bool) -> dict | None:
+    """Only reached through server-side verification code paths."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE payment_attempts SET status = ?, verified_at = ? "
+            "WHERE provider_reference = ?",
+            (status, _now_iso() if verified else None, reference),
+        )
+    return get_payment_attempt_by_reference(reference)
 
 
 # ---------- Correction helpers (owner can delete their own records) ----------
